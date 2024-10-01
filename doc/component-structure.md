@@ -1,0 +1,164 @@
+- App Root
+  - Tab View
+    - Scheduling Page
+      - Monthly Screen
+        - Date Button...
+          - -press->
+          - Daily Screen
+            - Ticket Container Label
+              - -pressed-> back to monthly screen
+            - Ticket Container...
+              - Ticket...
+                - -press->
+                - Ticket edit Window
+                  - Delete Iconic-button
+                  - Save Iconic-button
+                  - (each) Ticket configuration Section
+            - Ticket creation Button
+              - -press->
+              - Ticket creation Window
+                - Delete Iconic-button
+                - Save Iconic-button
+                - Tab View
+                  - Display Ticket configuration Section
+                    - Target category selection Mutable list form
+                      - Choice Row...
+                        - Choice Label
+                        - Cancel Button
+                      - Add Button
+                    - Term mode selection Pull-down
+                      - Until today
+                        - -selected->
+                        - Content selection Pull-down
+                          - daily average
+                          - daily quartile average
+                          - monthly average
+                          - monthly quartile average
+                          - summation
+                      - Last designated period
+                        - -selected->
+                        - Period selection Pull-down
+                          - week
+                          - month
+                          - half-year
+                          - year
+                        - Content selection Pull-down
+                          - daily average
+                          - daily quartile average
+                          - monthly average
+                          - monthly quartile average
+                          - summation
+                      - Until a designated date
+                        - -selected->
+                        - Date selection calendar form
+                        - Content selection Fixed pull-down
+                          - summation
+                  - Schedule Ticket configuration Section
+                    - Category selection Pull-down
+                    - Supplementation Inline textform
+                    - Registration date calendar form
+                    - Amount Money form
+                      - Income/Outcome selection Toggle button
+                      - Amount Number form
+                    - Repeat setting form
+                      - no
+                      - yes
+                        - -selected->
+                        - Frequency selection Pull-down
+                          - interval
+                            - -selected->
+                            - Interval selection Slider
+                          - week
+                            - -selected->
+                            - Day-of-Week selector
+                          - month
+                            - -selected->
+                            - Mode selection Toggle-button
+                              - from begining
+                              - from end
+                            - Date selection Slider
+                        - Unlimited period selector
+                          - Begining date Nullable calendar form
+                            - calendar form
+                            - Reset button
+                          - End date Nullable calendar form
+                            - calendar form
+                            - Reset button
+                  - Estimation Ticket configuration Section
+                    - Category selection Pull-down
+                    - Unlimited period selector
+                    - Display mode selection Pull-down
+                      - perDay
+                      - perWeek
+                      - perMonth
+                      - perYear
+                  - Log ticket configuration Section
+                    - Category selection Pull-down
+                    - Supplementary information Inline textform
+                    - Registoration date calendar form
+                    - Amount Money form'
+                    - Camera Button (*)
+                    - Presets selector Row-List
+    - Ticket Page
+      - Ticket Container
+        - Display Ticket...
+          - -pressed->
+          - Ticket edit Window
+        - Schedule Ticket...
+          - -pressed->
+          - Confirmation Dialog
+            - Confirm Button
+            - Edit Button
+              - -pressed->
+              - Ticket edit Window
+            - Reject Button
+        - Log Ticket...
+          - -pressed->
+          - Confirmation Dialog
+            - Confirm Button
+            - Edit Button
+              - -pressed->
+              - Ticket edit Window
+      - Log Button
+        - -pressed->
+        - Log information Window
+          - Log ticket configuration Section
+    - Data Page
+      - Statistical information Section
+        - Summation of all estate Display label
+      - Raw receipt data Table
+        - Receipt data Row...
+          - DATE
+          - CATEGORY
+          - SUPPLEMENT
+          - AMOUNT
+          - IMAGE_URL
+      - Data im/export Floating button
+        - -pressed->
+        - Data im/export Window
+          - Receipt data export Button
+          - Receipt data import Button
+          - Receipt data override Button
+          - App data backup Button
+          - App data restore Button
+    - Utils Page
+      - Category controller List form
+        - Category row...
+          - Category name Label button
+            - -pressed->
+            - Category edit Window
+              - Category name Inline textform
+              - Integration target selector Pull-down
+              - Integration Button
+                - -pressed->
+                - Confirmation Dialog
+                  - confirm
+                  - cancel
+        - Category create Button
+      - Chart Section
+        - Target category selector Pull down
+        - Chart kind selection Pull down
+          - accumulation
+          - subtotal
+        - Chart generate Button
+        - Chart Canvas
