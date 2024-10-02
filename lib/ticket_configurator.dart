@@ -1,14 +1,15 @@
-import 'dart:developer';
+import 'dart:developer' as developer;
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:miraibo/category_selector.dart';
+import 'package:miraibo/general_widget.dart';
 import 'data_types.dart';
 
 // <data edit modal window>
 class DataEditWindowController {
   void Function()? _saveHandler;
   void Function()? _deleteHandler;
-  void Function()? _dismisser;
 
   void save() {
     if (_saveHandler != null) {
@@ -93,6 +94,25 @@ class _DisplayTicketConfiguraitonSectionState
     extends State<DisplayTicketConfiguraitonSection> {
   late DisplayTicketConfigurationData configData;
   late MultipleCategorySelectorController categorySelectorCtl;
+  late DatePickButtonController designatedDateCtl;
+
+  void errorDialog(BuildContext context, String message) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Error'),
+            content: Text(message),
+            actions: [
+              TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('OK'))
+            ],
+          );
+        });
+  }
 
   @override
   void initState() {
@@ -103,42 +123,34 @@ class _DisplayTicketConfiguraitonSectionState
       allCategoriesInitiallySelected: configData.targetingAllCategories,
       initiallySelectedCategories: configData.targetCategories,
     );
-    categorySelectorCtl.onUpdate = () {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        configData = configData.copyWith(
-            targetCategories: categorySelectorCtl.categories,
-            targetingAllCategories: categorySelectorCtl.allCategoriesSelected);
-      });
-    };
+    designatedDateCtl = DatePickButtonController(
+      initialDate: configData.designatedDate,
+    );
     widget.controller.onSaved(() {
       if (!categorySelectorCtl.isInitialized) {
-        showDialog(
-            context: context,
-            builder: (context) {
-              return AlertDialog(
-                title: const Text('Error'),
-                content: const Text(
-                    'Category selector is not prepared yet. Please wait until it is loaded.'),
-                actions: [
-                  TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('OK'))
-                ],
-              );
-            });
+        // if user tries to save the configuration too early, show a dialog to alert the user
+        errorDialog(context,
+            'Category selector is not prepared yet. Please wait until it is loaded.');
       } else {
-        Navigator.of(context).pop();
-        log('DisplayTicketConfiguraitonSection saved ${configData.id}');
+        configData = configData.copyWith(
+            targetCategories: categorySelectorCtl.selectedCategories,
+            targetingAllCategories: categorySelectorCtl.allCategoriesSelected,
+            designatedDate: designatedDateCtl.selected);
+        if (!configData.targetingAllCategories &&
+            configData.targetCategories.isEmpty) {
+          errorDialog(context,
+              'Category unselected. Please select at least one category.');
+        } else {
+          Navigator.of(context).pop();
+          developer
+              .log('DisplayTicketConfiguraitonSection saved ${configData.id}');
+        }
       }
     });
     widget.controller.onDeleted(() {
       Navigator.of(context).pop();
-      log('DisplayTicketConfiguraitonSection deleted ${configData.id}');
+      developer
+          .log('DisplayTicketConfiguraitonSection deleted ${configData.id}');
     });
   }
 
@@ -156,6 +168,7 @@ class _DisplayTicketConfiguraitonSectionState
     return sector(
         context,
         'Period',
+        // there is no controller which returns the value of the selected item as 'DisplayTicketPeriod'
         DropdownMenu<DisplayTicketPeriod>(
           initialSelection: configData.designatedPeriod,
           dropdownMenuEntries: const [
@@ -167,9 +180,7 @@ class _DisplayTicketConfiguraitonSectionState
           ],
           onSelected: (value) {
             if (value != null) {
-              setState(() {
-                configData = configData.copyWith(designatedPeriod: value);
-              });
+              configData = configData.copyWith(designatedPeriod: value);
             }
           },
         ));
@@ -179,39 +190,14 @@ class _DisplayTicketConfiguraitonSectionState
     configData = configData.copyWith(
         designatedDate: configData.designatedDate ?? DateTime.now());
     return sector(
-        context,
-        'Until',
-        ElevatedButton(
-            onPressed: () {
-              showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(3000))
-                  .then((value) {
-                if (!mounted) {
-                  return;
-                }
-                if (value != null) {
-                  setState(() {
-                    configData = configData.copyWith(designatedDate: value);
-                  });
-                }
-              });
-            },
-            child: configData.designatedDate == null
-                ? const Text('tap to pick a date')
-                : Text(
-                    '${configData.designatedDate!.year}-${configData.designatedDate!.month}-${configData.designatedDate!.day}')));
+        context, 'Until', DatePickButton(controller: designatedDateCtl));
   }
 
   List<Widget> contentTypeSelector(BuildContext context, {bool fixed = false}) {
     if (fixed) {
       // for fixed, only summation is available
-      setState(() {
-        configData = configData.copyWith(
-            contentTypes: DisplayTicketContentTypes.summation);
-      });
+      configData = configData.copyWith(
+          contentTypes: DisplayTicketContentTypes.summation);
       return sector(
           context,
           'Content Type',
@@ -227,6 +213,7 @@ class _DisplayTicketConfiguraitonSectionState
       return sector(
           context,
           'Content Type',
+          // there is no controller which returns the value of the selected item as 'DisplayTicketContentTypes'
           DropdownMenu<DisplayTicketContentTypes>(
             initialSelection: configData.contentType,
             dropdownMenuEntries: const [
@@ -248,9 +235,7 @@ class _DisplayTicketConfiguraitonSectionState
             ],
             onSelected: (value) {
               if (value != null) {
-                setState(() {
-                  configData = configData.copyWith(contentTypes: value);
-                });
+                configData = configData.copyWith(contentTypes: value);
               }
             },
           ));
@@ -278,6 +263,7 @@ class _DisplayTicketConfiguraitonSectionState
     return sector(
         context,
         'Term-mode',
+        // there is no controller which returns the value of the selected item as 'DisplayTicketTermMode'
         DropdownMenu<DisplayTicketTermMode>(
           initialSelection: configData.termMode,
           dropdownMenuEntries: const [
@@ -301,8 +287,13 @@ class _DisplayTicketConfiguraitonSectionState
   }
 
   List<Widget> targetCategories(BuildContext context) {
-    return sector(context, 'Target Categories',
-        MultipleCategorySelector(controller: categorySelectorCtl));
+    var categorySelectorWidth =
+        widget.width ?? min(250.0, MediaQuery.of(context).size.width * 0.8);
+    return sector(
+        context,
+        'Target Categories',
+        MultipleCategorySelector(
+            controller: categorySelectorCtl, width: categorySelectorWidth));
   }
 
   @override
@@ -347,6 +338,10 @@ class ScheduleTicketConfiguraitonSection extends StatefulWidget {
 class _ScheduleTicketConfiguraitonSectionState
     extends State<ScheduleTicketConfiguraitonSection> {
   late ScheduleTicketConfigurationData configData;
+  late SingleCategorySelectorController categorySelectorCtl;
+  late TextEditingController supplementCtl;
+  late MoneyformController moneyFormCtl;
+  late DatePickButtonController registorationDateCtl;
 
   List<Widget> sector(BuildContext context, String title, Widget child) {
     return [
@@ -363,28 +358,49 @@ class _ScheduleTicketConfiguraitonSectionState
     super.initState();
     configData = widget.initialConfigurationData;
     widget.controller.onSaved(() {
+      configData = configData.copyWith(
+          category: categorySelectorCtl.selected,
+          supplement: supplementCtl.text,
+          amount: moneyFormCtl.amount,
+          registorationDate: registorationDateCtl.selected);
       Navigator.of(context).pop();
-      log('ScheduleTicketConfiguraitonSection saved ${configData.id}');
+      developer
+          .log('ScheduleTicketConfiguraitonSection saved ${configData.id}');
     });
     widget.controller.onDeleted(() {
       Navigator.of(context).pop();
-      log('ScheduleTicketConfiguraitonSection deleted ${configData.id}');
+      developer
+          .log('ScheduleTicketConfiguraitonSection deleted ${configData.id}');
     });
+    categorySelectorCtl = SingleCategorySelectorController(
+      initiallySelectedCategory: configData.category,
+    );
+    supplementCtl = TextEditingController(text: configData.supplement);
+    moneyFormCtl = MoneyformController(amount: configData.amount);
+    registorationDateCtl = DatePickButtonController(
+      initialDate: configData.registorationDate,
+    );
   }
 
   List<Widget> categorySelector(BuildContext context) {
     return sector(
       context,
       'category',
-      const Text('category selector'),
+      SingleCategorySelector(controller: categorySelectorCtl),
     );
   }
 
   List<Widget> supplementationForm(BuildContext context) {
+    var width = min(300.0, MediaQuery.of(context).size.width * 0.8);
     return sector(
       context,
       'supplement',
-      const Text('supplement'),
+      SizedBox(
+        width: width,
+        child: TextField(
+          controller: supplementCtl,
+        ),
+      ),
     );
   }
 
@@ -392,7 +408,7 @@ class _ScheduleTicketConfiguraitonSectionState
     return sector(
       context,
       'date',
-      const Text('registorationDate'),
+      DatePickButton(controller: registorationDateCtl),
     );
   }
 
@@ -400,11 +416,14 @@ class _ScheduleTicketConfiguraitonSectionState
     return sector(
       context,
       'amount',
-      const Text('amountForm'),
+      Moneyform(controller: moneyFormCtl),
     );
   }
 
   List<Widget> repeatSettingForm(BuildContext context) {
+    configData.repeatDayOfWeek;
+    configData.repeatInterval;
+    configData.repeatType;
     return sector(
       context,
       'repeat',
@@ -422,6 +441,21 @@ class _ScheduleTicketConfiguraitonSectionState
         ...registorationDateForm(context),
         ...amountForm(context),
         ...repeatSettingForm(context),
+        TextButton(
+            onPressed: () {
+              configData = configData.copyWith(
+                  category: categorySelectorCtl.selected,
+                  supplement: supplementCtl.text,
+                  amount: moneyFormCtl.amount,
+                  registorationDate: registorationDateCtl.selected);
+              developer.log('''
+                category: ${configData.category?.name}
+                supplement: ${configData.supplement}
+                amount: ${configData.amount}
+                registorationDate: ${configData.registorationDate}
+              ''');
+            },
+            child: const Text('show')),
         // spacer to allow the form to scroll
         SizedBox(
           height: MediaQuery.of(context).size.height *
@@ -460,11 +494,13 @@ class _EstimationTicketConfiguraitonSectionState
     configData = widget.initialConfigurationData;
     widget.controller.onSaved(() {
       Navigator.of(context).pop();
-      log('EstimationTicketConfiguraitonSection saved ${configData.id}');
+      developer
+          .log('EstimationTicketConfiguraitonSection saved ${configData.id}');
     });
     widget.controller.onDeleted(() {
       Navigator.of(context).pop();
-      log('EstimationTicketConfiguraitonSection deleted ${configData.id}');
+      developer
+          .log('EstimationTicketConfiguraitonSection deleted ${configData.id}');
     });
   }
 
@@ -512,11 +548,11 @@ class _LogTicketConfiguraitonSectionState
     configData = widget.initialConfigurationData;
     widget.controller.onSaved(() {
       Navigator.of(context).pop();
-      log('LogTicketConfiguraitonSection saved ${configData.id}');
+      developer.log('LogTicketConfiguraitonSection saved ${configData.id}');
     });
     widget.controller.onDeleted(() {
       Navigator.of(context).pop();
-      log('LogTicketConfiguraitonSection deleted ${configData.id}');
+      developer.log('LogTicketConfiguraitonSection deleted ${configData.id}');
     });
   }
 
@@ -537,8 +573,10 @@ class _LogTicketConfiguraitonSectionState
 
 class TicketCreationSection extends StatefulWidget {
   final DataEditWindowController controller;
+  final DateTime initialDate;
 
-  const TicketCreationSection({super.key, required this.controller});
+  const TicketCreationSection(
+      {super.key, required this.controller, required this.initialDate});
 
   @override
   State<TicketCreationSection> createState() => _TicketCreationSectionState();
@@ -551,7 +589,9 @@ class _TicketCreationSectionState extends State<TicketCreationSection>
   TabController? tabController;
 
   DataEditWindowController displayTicketConfigCtl = DataEditWindowController();
+  late DisplayTicketConfigurationData initialDisplayTicketConfigData;
   DataEditWindowController scheduleTicketConfigCtl = DataEditWindowController();
+  late ScheduleTicketConfigurationData initialScheduleTicketConfigData;
   DataEditWindowController estimationTicketConfigCtl =
       DataEditWindowController();
 
@@ -577,15 +617,23 @@ class _TicketCreationSectionState extends State<TicketCreationSection>
       // just close the window
       Navigator.of(context).pop();
     });
+    initialDisplayTicketConfigData = DisplayTicketConfigurationData(
+      designatedDate: widget.initialDate,
+    );
+    initialScheduleTicketConfigData = ScheduleTicketConfigurationData(
+      registorationDate: widget.initialDate,
+    );
   }
 
   Widget body(BuildContext context) {
     return TabBarView(controller: tabController, children: [
       DisplayTicketConfiguraitonSection(
         controller: displayTicketConfigCtl,
+        initialConfigurationData: initialDisplayTicketConfigData,
       ),
       ScheduleTicketConfiguraitonSection(
         controller: scheduleTicketConfigCtl,
+        initialConfigurationData: initialScheduleTicketConfigData,
       ),
       EstimationTicketConfiguraitonSection(
         controller: estimationTicketConfigCtl,

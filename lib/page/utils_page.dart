@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../category_selector.dart';
 
@@ -11,9 +13,11 @@ class UtilsPage extends StatefulWidget {
 class _UtilsPageState extends State<UtilsPage> {
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    var categorySelectorWidth =
+        min(500.0, MediaQuery.of(context).size.width * 0.8);
+    return Scaffold(
       body: Center(
-        child: CategoryEditorSection(),
+        child: CategoryEditorSection(width: categorySelectorWidth),
       ),
     );
   }

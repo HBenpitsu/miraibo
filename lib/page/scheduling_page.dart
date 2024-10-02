@@ -788,7 +788,8 @@ class TicketCreationButton extends StatelessWidget {
     return FloatingActionButton(
       onPressed: () {
         var controller = DataEditWindowController();
-        var configSection = TicketCreationSection(controller: controller);
+        var configSection = TicketCreationSection(
+            controller: controller, initialDate: getShownDate());
         showDataEditWindow(controller, context, configSection);
       },
       child: Icon(Icons.add, color: Theme.of(context).colorScheme.primary),

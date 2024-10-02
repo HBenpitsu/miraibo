@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'dart:ui';
 
@@ -164,14 +166,14 @@ class MutableListForm<T> extends StatefulWidget {
 
   final Widget Function(BuildContext) adderBuilder;
 
-  final double? width;
+  final double width;
 
   const MutableListForm(
       {super.key,
       required this.controller,
       required this.deleteButton,
       required this.adderBuilder,
-      this.width,
+      required this.width,
       this.onItemTapped,
       this.onItemRemoved});
 
@@ -190,7 +192,7 @@ class _MutableListFormState<T> extends State<MutableListForm<T>> {
   }
 
   Widget rowContent(BuildContext context, T item) {
-    return ElevatedButton(
+    return TextButton(
         onPressed: () {
           widget._onItemTapped(item);
         },
@@ -231,7 +233,7 @@ class _MutableListFormState<T> extends State<MutableListForm<T>> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-        width: widget.width ?? MediaQuery.of(context).size.width * 0.8,
+        width: widget.width,
         child: Column(
           children: [
             for (T item in widget.controller.items) row(context, item),
@@ -241,3 +243,188 @@ class _MutableListFormState<T> extends State<MutableListForm<T>> {
   }
 }
 // </MutableListForm>
+
+class DatePickButtonController {
+  DateTime _selected;
+  DateTime get selected => _selected;
+
+  void Function(DateTime)? onDateSelected;
+  void _onDateSelected(DateTime date) {
+    if (onDateSelected != null) {
+      onDateSelected!(date);
+    }
+  }
+
+  DatePickButtonController({DateTime? initialDate, this.onDateSelected})
+      : _selected = initialDate ?? DateTime.now();
+
+  void setDate(DateTime date) {
+    _selected = date;
+    _onDateSelected(date);
+  }
+}
+
+class DatePickButton extends StatelessWidget {
+  final DatePickButtonController controller;
+  const DatePickButton({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+        onPressed: () {
+          showDatePicker(
+                  context: context,
+                  initialDate: controller.selected,
+                  firstDate: controller.selected
+                      .subtract(const Duration(days: 365 * 200)),
+                  lastDate:
+                      controller.selected.add(const Duration(days: 365 * 200)))
+              .then((value) {
+            if (value != null) {
+              controller.setDate(value);
+            }
+          });
+        },
+        child: Text(
+            '${controller.selected.year}-${controller.selected.month}-${controller.selected.day}'));
+  }
+}
+
+class TogglePanelController<T> {
+  final List<T> values;
+  final int initialIndex;
+
+  int _selected;
+  T get selected => values[_selected];
+
+  void increment() {
+    _selected++;
+    if (_selected >= values.length) {
+      _selected = 0;
+    }
+    _onChanged(selected);
+  }
+
+  void Function(T)? onChanged;
+  void _onChanged(T value) {
+    if (onChanged != null) {
+      onChanged!(value);
+    }
+  }
+
+  TogglePanelController({
+    required this.values,
+    this.onChanged,
+    this.initialIndex = 0,
+  }) : _selected = initialIndex;
+}
+
+class TapToggleWidgets<T> extends StatefulWidget {
+  final TogglePanelController<T> controller;
+  final List<Widget> children;
+  const TapToggleWidgets({
+    super.key,
+    required this.children,
+    required this.controller,
+  });
+
+  @override
+  State<TapToggleWidgets> createState() => _TapToggleWidgetsState();
+}
+
+class _TapToggleWidgetsState extends State<TapToggleWidgets> {
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        child: SizedBox(
+            height: 30,
+            width: 75,
+            child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                focusColor: Theme.of(context).colorScheme.primaryFixedDim,
+                splashColor: Theme.of(context).colorScheme.primaryFixedDim,
+                onTap: () {
+                  setState(() {
+                    widget.controller.increment();
+                  });
+                },
+                child: widget.children[widget.controller._selected])));
+  }
+}
+
+class MoneyformController {
+  int _amount;
+  int get amount => _amount;
+
+  void Function(int)? onAmountChanged;
+  void _onAmountChanged(int amount) {
+    if (onAmountChanged != null) {
+      onAmountChanged!(amount);
+    }
+  }
+
+  void setAmount(int amount) {
+    _amount = amount;
+    _onAmountChanged(amount);
+  }
+
+  MoneyformController({int amount = 0, this.onAmountChanged})
+      : _amount = amount;
+}
+
+class Moneyform extends StatelessWidget {
+  final MoneyformController controller;
+  final double? width;
+  const Moneyform({super.key, required this.controller, this.width});
+
+  @override
+  Widget build(BuildContext context) {
+    final TextEditingController txtCtl = TextEditingController();
+    txtCtl.text = controller.amount.toString();
+    var calculatedWidth =
+        width ?? min(200, MediaQuery.of(context).size.width * 0.8);
+    var tapToggleCtl = TogglePanelController<int>(
+      values: [1, -1],
+      onChanged: (value) {
+        controller.setAmount(controller.amount.abs() * value);
+      },
+    );
+    return SizedBox(
+        width: calculatedWidth,
+        child: Row(
+          children: [
+            TapToggleWidgets<int>(
+              controller: tapToggleCtl,
+              children: [
+                Center(
+                    child: Text('income',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary))),
+                Center(
+                    child: Text('outcome',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary)))
+              ],
+            ),
+            Expanded(
+                child: TextField(
+              controller: txtCtl,
+              onChanged: (value) {
+                int amount = int.tryParse(value) ?? 0;
+                if (amount < 0) {
+                  amount = 0;
+                }
+                controller.setAmount(tapToggleCtl.selected * amount);
+                txtCtl.text = amount.toString();
+              },
+              keyboardType: TextInputType.number,
+            )),
+            // sizedSpacer
+            const SizedBox(width: 50),
+          ],
+        ));
+  }
+}

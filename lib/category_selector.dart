@@ -9,6 +9,69 @@ List<Category> categoryListMock = [
   Category.make('electricity'),
 ];
 
+class SingleCategorySelectorController {
+  void Function(Category)? onUpdate;
+  void _onUpdate(Category value) {
+    if (onUpdate != null) {
+      onUpdate!(value);
+    }
+  }
+
+  Category? Function()? _category;
+  Category? get selected => _category == null ? null : _category!();
+
+  final Category? initiallySelectedCategory;
+
+  SingleCategorySelectorController(
+      {this.initiallySelectedCategory, this.onUpdate});
+}
+
+class SingleCategorySelector extends StatelessWidget {
+  final SingleCategorySelectorController controller;
+  const SingleCategorySelector({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    Category? selected;
+    controller._category = () => selected;
+    return FutureBuilder(
+      future: Category.fetchAll(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const CircularProgressIndicator();
+        } else if (snapshot.hasError) {
+          return Text(snapshot.error.toString());
+        } else {
+          return DropdownMenu<Category>(
+            initialSelection: controller.initiallySelectedCategory,
+            dropdownMenuEntries: [
+              for (Category category in snapshot.data as List<Category>)
+                DropdownMenuEntry<Category>(
+                    value: category, label: category.name)
+            ],
+            onSelected: (value) {
+              if (value != null) {
+                selected = value;
+                controller._onUpdate(value);
+              }
+            },
+          );
+        }
+      },
+    );
+    // return DropdownMenu<Category>(
+    //   dropdownMenuEntries: [
+    //     for (Category category in categoryListMock)
+    //       DropdownMenuEntry<Category>(value: category, label: category.name)
+    //   ],
+    //   onSelected: (value) {
+    //     onUpdate!(value!);
+    //   },
+    //   initiallySelected: initiallySelectedCategory,
+    // );
+  }
+}
+
 class MultipleCategorySelectorController {
   void Function()? onUpdate;
   void _onUpdated() {
@@ -18,7 +81,7 @@ class MultipleCategorySelectorController {
   }
 
   List<Category> Function()? _categories;
-  List<Category> get categories => _categories!();
+  List<Category> get selectedCategories => _categories!();
 
   bool Function()? _allCategoriesSelected;
   bool get allCategoriesSelected => _allCategoriesSelected!();
@@ -36,10 +99,10 @@ class MultipleCategorySelectorController {
 }
 
 class MultipleCategorySelector extends StatefulWidget {
-  final double? width;
+  final double width;
   final MultipleCategorySelectorController controller;
   const MultipleCategorySelector(
-      {super.key, this.width, required this.controller});
+      {super.key, required this.width, required this.controller});
 
   @override
   State<MultipleCategorySelector> createState() =>
@@ -83,38 +146,27 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
     allCategoriesSelected = widget.controller.allCategoriesInitiallySelected;
   }
 
-  List<DropdownMenuEntry> generateDropdownMenuEntries() {
+  List<DropdownMenuEntry<Category>> generateDropdownMenuEntries() {
     return [
       for (Category category in options!)
-        DropdownMenuEntry(value: category, label: category.name)
+        DropdownMenuEntry<Category>(value: category, label: category.name)
     ];
   }
 
   Widget adderBuilder(BuildContext context) {
-    Category? selected;
-    return Row(children: [
-      Expanded(
-          child: DropdownMenu(
-        width: widget.width ?? MediaQuery.of(context).size.width * 0.8,
-        dropdownMenuEntries: generateDropdownMenuEntries(),
-        onSelected: (value) {
-          selected = value;
-        },
-      )),
-      Card(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        child: IconButton(
-          icon: const Icon(Icons.add),
-          color: Theme.of(context).colorScheme.primary,
-          onPressed: () {
-            if (selected != null) {
-              mutableListCtl.addItem(selected!);
-              options!.remove(selected);
-            }
-          },
-        ),
-      )
-    ]);
+    var dropDownCtl = TextEditingController();
+    return DropdownMenu<Category>(
+      controller: dropDownCtl,
+      width: widget.width,
+      dropdownMenuEntries: generateDropdownMenuEntries(),
+      onSelected: (value) {
+        if (value != null) {
+          mutableListCtl.addItem(value);
+          options!.remove(value);
+          dropDownCtl.clear();
+        }
+      },
+    );
   }
 
   void showRenameDialog(BuildContext context, Category item) {
@@ -150,37 +202,33 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
         } else if (snapshot.hasError) {
           return Text(snapshot.error.toString());
         } else {
-          return Column(
-            children: [
-              SizedBox(
-                  width:
-                      widget.width ?? MediaQuery.of(context).size.width * 0.8,
-                  child:
-                      Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                    Text('All Categories',
-                        style: Theme.of(context).textTheme.bodyLarge),
-                    Switch(
-                        value: allCategoriesSelected,
-                        onChanged: (ipt) {
-                          setState(() {
-                            allCategoriesSelected = ipt;
-                            widget.controller._onUpdated();
-                          });
-                        }),
-                  ])),
-              MutableListForm(
-                  width: widget.width,
-                  deleteButton: true,
-                  controller: mutableListCtl,
-                  adderBuilder: adderBuilder,
-                  onItemTapped: (Category item) {
-                    showRenameDialog(context, item);
-                  },
-                  onItemRemoved: (Category item) {
-                    options!.add(item);
-                  })
-            ],
-          );
+          return SizedBox(
+              width: widget.width,
+              child: Column(
+                children: [
+                  SwitchListTile(
+                      title: Text('All Categories',
+                          style: Theme.of(context).textTheme.bodyLarge),
+                      value: allCategoriesSelected,
+                      onChanged: (ipt) {
+                        setState(() {
+                          allCategoriesSelected = ipt;
+                        });
+                        widget.controller._onUpdated();
+                      }),
+                  MutableListForm(
+                      width: widget.width,
+                      deleteButton: true,
+                      controller: mutableListCtl,
+                      adderBuilder: adderBuilder,
+                      onItemTapped: (Category item) {
+                        showRenameDialog(context, item);
+                      },
+                      onItemRemoved: (Category item) {
+                        options!.add(item);
+                      })
+                ],
+              ));
         }
       },
     );
@@ -188,7 +236,8 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
 }
 
 class CategoryEditorSection extends StatefulWidget {
-  const CategoryEditorSection({super.key});
+  final double width;
+  const CategoryEditorSection({super.key, required this.width});
 
   @override
   State<CategoryEditorSection> createState() => _CategoryEditorSectionState();
@@ -221,8 +270,20 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
   }
 
   Widget adderBuilder(BuildContext context) {
+    var focusNode = FocusNode();
     return Row(children: [
-      Expanded(child: TextField(controller: textCtl)),
+      Expanded(
+          child: TextField(
+        focusNode: focusNode,
+        controller: textCtl,
+        onSubmitted: (value) {
+          if (value.isEmpty) return;
+          mutableListCtl.addItem(Category.make(value));
+          textCtl.clear();
+          // do not lose focus
+          focusNode.requestFocus();
+        },
+      )),
       Card(
         color: Theme.of(context).colorScheme.primaryContainer,
         child: IconButton(
@@ -361,6 +422,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
         }
         return MutableListForm(
             controller: mutableListCtl,
+            width: widget.width,
             deleteButton: false,
             onItemTapped: (Category item) {
               showCategoryEditorWindow(context, item);

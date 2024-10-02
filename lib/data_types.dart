@@ -80,7 +80,7 @@ enum MonthlyRepeatType { fromHead, fromTail }
 class ScheduleTicketConfigurationData {
   final String? id;
   final Category? category;
-  final String supplementation;
+  final String supplement;
   final DateTime? registorationDate;
   final int amount;
   final RepeatType repeatType;
@@ -93,7 +93,7 @@ class ScheduleTicketConfigurationData {
   const ScheduleTicketConfigurationData({
     this.id,
     this.category,
-    this.supplementation = '',
+    this.supplement = '',
     this.registorationDate,
     this.amount = 0,
     this.repeatType = RepeatType.no,
@@ -107,7 +107,7 @@ class ScheduleTicketConfigurationData {
   ScheduleTicketConfigurationData copyWith({
     String? id,
     Category? category,
-    String? supplementation,
+    String? supplement,
     DateTime? registorationDate,
     int? amount,
     RepeatType? repeatType,
@@ -120,7 +120,7 @@ class ScheduleTicketConfigurationData {
     return ScheduleTicketConfigurationData(
       id: id ?? this.id,
       category: category ?? this.category,
-      supplementation: supplementation ?? this.supplementation,
+      supplement: supplement ?? this.supplement,
       registorationDate: registorationDate ?? this.registorationDate,
       amount: amount ?? this.amount,
       repeatType: repeatType ?? this.repeatType,
