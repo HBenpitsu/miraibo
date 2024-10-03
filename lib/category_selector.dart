@@ -216,16 +216,17 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
                         });
                         widget.controller._onUpdated();
                       }),
-                  MutableListForm(
-                      width: widget.width,
-                      deleteButton: true,
-                      controller: mutableListCtl,
-                      adderBuilder: adderBuilder,
-                      onItemTapped: (Category item) {
-                        showRenameDialog(context, item);
-                      },
-                      onItemRemoved: (Category item) {
-                        options!.add(item);
+                      if (!allCategoriesSelected)
+                      MutableListForm(
+                        width: widget.width,
+                        deleteButton: true,
+                        controller: mutableListCtl,
+                        adderBuilder: adderBuilder,
+                        onItemTapped: (Category item) {
+                          showRenameDialog(context, item);
+                        },
+                        onItemRemoved: (Category item) {
+                          options!.add(item);
                       })
                 ],
               ));
