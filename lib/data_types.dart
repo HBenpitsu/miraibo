@@ -11,7 +11,7 @@ enum DisplayTicketTermMode {
 
 enum DisplayTicketPeriod { week, month, halfYear, year }
 
-enum DisplayTicketContentTypes {
+enum DisplayTicketContentType {
   dailyAverage,
   dailyQuartileAverage,
   monthlyAverage,
@@ -26,7 +26,7 @@ class DisplayTicketConfigurationData {
   final DisplayTicketTermMode termMode;
   final DateTime? designatedDate;
   final DisplayTicketPeriod designatedPeriod;
-  final DisplayTicketContentTypes contentType;
+  final DisplayTicketContentType contentType;
 
   const DisplayTicketConfigurationData({
     this.id,
@@ -35,7 +35,7 @@ class DisplayTicketConfigurationData {
     this.termMode = DisplayTicketTermMode.untilToday,
     this.designatedDate,
     this.designatedPeriod = DisplayTicketPeriod.week,
-    this.contentType = DisplayTicketContentTypes.summation,
+    this.contentType = DisplayTicketContentType.summation,
   });
 
   DisplayTicketConfigurationData copyWith({
@@ -45,7 +45,7 @@ class DisplayTicketConfigurationData {
     DisplayTicketTermMode? termMode,
     DateTime? designatedDate,
     DisplayTicketPeriod? designatedPeriod,
-    DisplayTicketContentTypes? contentTypes,
+    DisplayTicketContentType? contentType,
   }) {
     return DisplayTicketConfigurationData(
       id: id ?? this.id,
@@ -55,7 +55,7 @@ class DisplayTicketConfigurationData {
       termMode: termMode ?? this.termMode,
       designatedDate: designatedDate ?? this.designatedDate,
       designatedPeriod: designatedPeriod ?? this.designatedPeriod,
-      contentType: contentTypes ?? this.contentType,
+      contentType: contentType ?? this.contentType,
     );
   }
 }

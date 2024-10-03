@@ -197,15 +197,15 @@ class _DisplayTicketConfiguraitonSectionState
     if (fixed) {
       // for fixed, only summation is available
       configData = configData.copyWith(
-          contentTypes: DisplayTicketContentTypes.summation);
+          contentType: DisplayTicketContentType.summation);
       return sector(
           context,
           'Content Type',
-          DropdownMenu<DisplayTicketContentTypes>(
+          DropdownMenu<DisplayTicketContentType>(
             initialSelection: configData.contentType,
             dropdownMenuEntries: const [
               DropdownMenuEntry(
-                  value: DisplayTicketContentTypes.summation,
+                  value: DisplayTicketContentType.summation,
                   label: 'summation'),
             ],
           ));
@@ -214,28 +214,28 @@ class _DisplayTicketConfiguraitonSectionState
           context,
           'Content Type',
           // there is no controller which returns the value of the selected item as 'DisplayTicketContentTypes'
-          DropdownMenu<DisplayTicketContentTypes>(
+          DropdownMenu<DisplayTicketContentType>(
             initialSelection: configData.contentType,
             dropdownMenuEntries: const [
               DropdownMenuEntry(
-                  value: DisplayTicketContentTypes.dailyAverage,
+                  value: DisplayTicketContentType.dailyAverage,
                   label: 'daily average'),
               DropdownMenuEntry(
-                  value: DisplayTicketContentTypes.dailyQuartileAverage,
+                  value: DisplayTicketContentType.dailyQuartileAverage,
                   label: 'daily quartile average'),
               DropdownMenuEntry(
-                  value: DisplayTicketContentTypes.monthlyAverage,
+                  value: DisplayTicketContentType.monthlyAverage,
                   label: 'monthly average'),
               DropdownMenuEntry(
-                  value: DisplayTicketContentTypes.monthlyQuartileAverage,
+                  value: DisplayTicketContentType.monthlyQuartileAverage,
                   label: 'monthly quartile average'),
               DropdownMenuEntry(
-                  value: DisplayTicketContentTypes.summation,
+                  value: DisplayTicketContentType.summation,
                   label: 'summation'),
             ],
             onSelected: (value) {
               if (value != null) {
-                configData = configData.copyWith(contentTypes: value);
+                configData = configData.copyWith(contentType: value);
               }
             },
           ));
