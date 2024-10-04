@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
       scrollBehavior: const MyCustomScrollBehavior(),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color.fromARGB(255, 190, 156, 81)),
+            seedColor: const Color.fromARGB(255, 255, 203, 91)),
         useMaterial3: true,
       ),
       home: const MyTabView(),

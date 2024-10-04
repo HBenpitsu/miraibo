@@ -318,7 +318,9 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
       width: calendarWidthFor(context),
       child: Text(
         '${widget.forThisDate.year} - ${widget.forThisDate.month}',
-        style: Theme.of(context).textTheme.headlineLarge,
+        style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontSize: 38), //Theme.of(context).textTheme.headlineLarge
       ),
     );
   }
@@ -461,23 +463,20 @@ class DateButton extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (style) {
       case DateButtonStyle.hasNothing:
+        return button(context, Theme.of(context).colorScheme.surface,
+            Theme.of(context).disabledColor, Theme.of(context).disabledColor);
+      case DateButtonStyle.hasPeriodicEvent:
         return button(
             context,
             Theme.of(context).colorScheme.surface,
             Theme.of(context).colorScheme.primary,
             Theme.of(context).colorScheme.primary);
-      case DateButtonStyle.hasPeriodicEvent:
-        return button(
-            context,
-            Theme.of(context).colorScheme.secondaryContainer,
-            Theme.of(context).colorScheme.secondary,
-            Theme.of(context).colorScheme.onSecondaryContainer);
       case DateButtonStyle.hasSpecialEvent:
         return button(
             context,
-            Theme.of(context).colorScheme.tertiaryContainer,
-            Theme.of(context).colorScheme.tertiary,
-            Theme.of(context).colorScheme.onTertiaryContainer);
+            Theme.of(context).colorScheme.primaryContainer,
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.primary);
     }
   }
 }

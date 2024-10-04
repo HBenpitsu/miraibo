@@ -85,7 +85,7 @@
                             - calendar form
                             - Reset button
                   - Estimation Ticket configuration Section
-                    - Category selection Pull-down
+                    - Target category selection Mutable list form
                     - Unlimited period selector
                     - Display mode selection Pull-down
                       - perDay

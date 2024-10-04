@@ -196,8 +196,8 @@ class _DisplayTicketConfiguraitonSectionState
   List<Widget> contentTypeSelector(BuildContext context, {bool fixed = false}) {
     if (fixed) {
       // for fixed, only summation is available
-      configData = configData.copyWith(
-          contentType: DisplayTicketContentType.summation);
+      configData =
+          configData.copyWith(contentType: DisplayTicketContentType.summation);
       return sector(
           context,
           'Content Type',
@@ -342,6 +342,7 @@ class _ScheduleTicketConfiguraitonSectionState
   late TextEditingController supplementCtl;
   late MoneyformController moneyFormCtl;
   late DatePickButtonController registorationDateCtl;
+  late ScheduleTicketRepeatSettingSectorController repeatSettingCtl;
 
   List<Widget> sector(BuildContext context, String title, Widget child) {
     return [
@@ -372,6 +373,7 @@ class _ScheduleTicketConfiguraitonSectionState
       developer
           .log('ScheduleTicketConfiguraitonSection deleted ${configData.id}');
     });
+    // <bind controllers>
     categorySelectorCtl = SingleCategorySelectorController(
       initiallySelectedCategory: configData.category,
     );
@@ -380,7 +382,18 @@ class _ScheduleTicketConfiguraitonSectionState
     registorationDateCtl = DatePickButtonController(
       initialDate: configData.registorationDate,
     );
+    repeatSettingCtl = ScheduleTicketRepeatSettingSectorController(
+      initialRepeatType: configData.repeatType,
+      initialRepeatInterval: configData.repeatInterval,
+      initialRepeatDayOfWeek: configData.repeatDayOfWeek,
+      initialMonthlyRepeatType: configData.monthlyRepeatType,
+      initialStartDate: configData.startDate,
+      initialEndDate: configData.endDate,
+    );
+    // </bind controllers>
   }
+
+  // <components> just to avoid deep nesting
 
   List<Widget> categorySelector(BuildContext context) {
     return sector(
@@ -421,15 +434,14 @@ class _ScheduleTicketConfiguraitonSectionState
   }
 
   List<Widget> repeatSettingForm(BuildContext context) {
-    configData.repeatDayOfWeek;
-    configData.repeatInterval;
-    configData.repeatType;
     return sector(
       context,
       'repeat',
-      const Text('repeatSetting'),
+      ScheduleTicketRepeatSettingSector(controller: repeatSettingCtl),
     );
   }
+
+  // </components>
 
   @override
   Widget build(BuildContext context) {
@@ -464,6 +476,267 @@ class _ScheduleTicketConfiguraitonSectionState
         )
       ],
     ));
+  }
+}
+
+class ScheduleTicketRepeatSettingSectorController {
+  RepeatType _repeatType;
+  RepeatType get repeatType => _repeatType;
+  set repeatType(RepeatType value) {
+    _repeatType = value;
+    _onChanged();
+  }
+
+  Duration _repeatInterval;
+  Duration get repeatInterval => _repeatInterval;
+  set repeatInterval(Duration value) {
+    _repeatInterval = value;
+    _onChanged();
+  }
+
+  final List<DayOfWeek> _repeatDayOfWeek;
+  List<DayOfWeek> get repeatDayOfWeek => _repeatDayOfWeek;
+  bool dayOfWeekSelected(DayOfWeek day) => _repeatDayOfWeek.contains(day);
+  void turnOnDayOfWeek(DayOfWeek day) {
+    if (!_repeatDayOfWeek.contains(day)) {
+      _repeatDayOfWeek.add(day);
+      _onChanged();
+    }
+  }
+
+  void turnOffDayOfWeek(DayOfWeek day) {
+    if (_repeatDayOfWeek.contains(day)) {
+      _repeatDayOfWeek.remove(day);
+      _onChanged();
+    }
+  }
+
+  void toggleDayOfWeek(DayOfWeek day) {
+    if (_repeatDayOfWeek.contains(day)) {
+      _repeatDayOfWeek.remove(day);
+    } else {
+      _repeatDayOfWeek.add(day);
+    }
+    _onChanged();
+  }
+
+  MonthlyRepeatType _monthlyRepeatType;
+  MonthlyRepeatType get monthlyRepeatType => _monthlyRepeatType;
+  set monthlyRepeatType(MonthlyRepeatType value) {
+    _monthlyRepeatType = value;
+    _onChanged();
+  }
+
+  DateTime? _startDate;
+  DateTime? get startDate => _startDate;
+  set startDate(DateTime? value) {
+    _startDate = value;
+    _onChanged();
+  }
+
+  DateTime? _endDate;
+  DateTime? get endDate => _endDate;
+  set endDate(DateTime? value) {
+    _endDate = value;
+    _onChanged();
+  }
+
+  void Function()? onChanged;
+  void _onChanged() {
+    if (onChanged != null) {
+      onChanged!();
+    }
+  }
+
+  ScheduleTicketRepeatSettingSectorController({
+    RepeatType initialRepeatType = RepeatType.no,
+    Duration initialRepeatInterval = const Duration(days: 1),
+    List<DayOfWeek> initialRepeatDayOfWeek = const [],
+    MonthlyRepeatType initialMonthlyRepeatType = MonthlyRepeatType.fromHead,
+    DateTime? initialStartDate,
+    DateTime? initialEndDate,
+    this.onChanged,
+  })  : _repeatType = initialRepeatType,
+        _repeatInterval = initialRepeatInterval,
+        _repeatDayOfWeek = List.from(initialRepeatDayOfWeek),
+        _monthlyRepeatType = initialMonthlyRepeatType,
+        _startDate = initialStartDate,
+        _endDate = initialEndDate;
+}
+
+class ScheduleTicketRepeatSettingSector extends StatefulWidget {
+  final ScheduleTicketRepeatSettingSectorController controller;
+  final double? width;
+
+  const ScheduleTicketRepeatSettingSector(
+      {super.key, required this.controller, this.width});
+
+  @override
+  State<ScheduleTicketRepeatSettingSector> createState() =>
+      _ScheduleTicketRepeatSettingSectorState();
+}
+
+class _ScheduleTicketRepeatSettingSectorState
+    extends State<ScheduleTicketRepeatSettingSector> {
+  late TextEditingController intervalCtl;
+
+  @override
+  void initState() {
+    super.initState();
+    intervalCtl = TextEditingController(
+        text: widget.controller.repeatInterval.inDays.toString());
+  }
+
+  // <components> just to avoid deep nesting
+
+  Widget repeatTypeSelector(BuildContext context) {
+    return DropdownMenu<RepeatType>(
+      initialSelection: widget.controller.repeatType,
+      dropdownMenuEntries: const [
+        DropdownMenuEntry(value: RepeatType.no, label: 'no repeat'),
+        DropdownMenuEntry(value: RepeatType.interval, label: 'repeat in days'),
+        DropdownMenuEntry(value: RepeatType.weekly, label: 'weekly'),
+        DropdownMenuEntry(value: RepeatType.monthly, label: 'monthly'),
+        DropdownMenuEntry(value: RepeatType.anually, label: 'anually'),
+      ],
+      onSelected: (value) {
+        if (value != null) {
+          widget.controller.repeatType = value;
+        }
+      },
+    );
+  }
+
+  Widget repeatIntervalSelector(BuildContext context) {
+    return Row(children: [
+      const Spacer(),
+      const Text('Repeat in every '),
+      SizedBox(
+          width: 50,
+          child: TextField(
+            controller: intervalCtl,
+            keyboardType: TextInputType.number,
+            onTap: () {
+              intervalCtl.selection = TextSelection(
+                  baseOffset: 0, extentOffset: intervalCtl.text.length);
+            },
+            onChanged: (value) {
+              var days = int.tryParse(value) ?? 1;
+              if (days < 1) {
+                days = 1;
+              }
+              widget.controller.repeatInterval = Duration(days: days);
+              intervalCtl.text = days.toString();
+            },
+          )),
+      const Text(' days.'),
+      const Spacer(),
+    ]);
+  }
+
+  String dayOfWeekLabel(DayOfWeek day) {
+    switch (day) {
+      case DayOfWeek.sunday:
+        return 'Sun';
+      case DayOfWeek.monday:
+        return 'Mon';
+      case DayOfWeek.tuesday:
+        return 'Tue';
+      case DayOfWeek.wednesday:
+        return 'Wed';
+      case DayOfWeek.thursday:
+        return 'Thu';
+      case DayOfWeek.friday:
+        return 'Fri';
+      case DayOfWeek.saturday:
+        return 'Sat';
+    }
+  }
+
+  Widget weekDayIconButton(BuildContext context, DayOfWeek day) {
+    return IconButton(
+        onPressed: () {
+          setState(() {
+            widget.controller.toggleDayOfWeek(day);
+          });
+        },
+        style: IconButton.styleFrom(
+            side: BorderSide(
+          width: 1.0,
+          color: widget.controller.dayOfWeekSelected(day)
+              ? Theme.of(context).primaryColor
+              : Theme.of(context).disabledColor,
+        )),
+        icon: SizedBox(
+            width: 30,
+            child: Center(
+                child: Text(dayOfWeekLabel(day),
+                    style: TextStyle(
+                        color: widget.controller.dayOfWeekSelected(day)
+                            ? Theme.of(context).primaryColor
+                            : Theme.of(context).disabledColor)))));
+  }
+
+  Widget weekDaySelector(BuildContext context) {
+    return Wrap(
+      children: [
+        ...DayOfWeek.values.map((day) {
+          return Padding(
+              padding: const EdgeInsets.all(2),
+              child: weekDayIconButton(context, day));
+        }),
+      ],
+    );
+  }
+
+  Widget radioTile(
+      BuildContext context, String title, MonthlyRepeatType value) {
+    const double listTileWidth = 300.0;
+    return SizedBox(
+        width: listTileWidth,
+        child: ListTile(
+          title: Text(title),
+          leading: Radio(
+            value: value,
+            groupValue: widget.controller.monthlyRepeatType,
+            onChanged: (value) {
+              if (value != null) {
+                setState(() {
+                  widget.controller.monthlyRepeatType = value;
+                });
+              }
+            },
+          ),
+        ));
+  }
+
+  Widget monthlyRepeatTypeSelector(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        radioTile(context, 'Count days from head', MonthlyRepeatType.fromHead),
+        radioTile(context, 'Count days from tail', MonthlyRepeatType.fromTail),
+      ],
+    );
+  }
+
+  // </components>
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+        width:
+            widget.width ?? min(350.0, MediaQuery.of(context).size.width * 0.8),
+        child: Column(
+          children: [
+            repeatTypeSelector(context),
+            repeatIntervalSelector(context),
+            weekDaySelector(context),
+            monthlyRepeatTypeSelector(context),
+            // startDateSelector(context),
+            // endDateSelector(context),
+          ],
+        ));
   }
 }
 // </schedule ticket configurator>

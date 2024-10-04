@@ -15,7 +15,8 @@
 
 - DISPLAY_TICKETS
   - id ( PRIMAL INT )
-  - target_category_map_linker ( INT )
+  - target_category_map_linker ( NULLABLE DISPLAY_TICKET_TARGET_CATEGORY_MAP/target_category_map_linker )
+    - NULL = all
   - period_in_days ( NULLABLE INT )
     - NULL = untilToday or untilDesignatedDate
   - limit_date ( NULLABLE DATE )
@@ -31,8 +32,7 @@
 
 - DISPLAY_TICKET_TARGET_CATEGORY_MAP
   - id ( PRIMAL INT )
-  - target_category_map_linker ( NULLABLE INT )
-    - NULL = all
+  - target_category_map_linker ( INT )
   - category_id ( CATEGORIES/id )
 
 - SCHEDULES
@@ -42,24 +42,26 @@
   - scheduledAt ( DATE )
   - amount ( SIGNED INT )
   - origin_date ( DATE )
+  - repeat_type ( ENUM ( no, interval, weekly, monthly, annualy ) )
   - repeat_option_interval_in_days ( NULLABLE INT )
-  - repeat_option_weekly ( ENUM 'Sun','Mon','Tue','Wed','Thu','Fri','Sat' )
+  - repeat_option_on_Sunday ( BOOL )
+  - repeat_option_on_Monday ( BOOL )
+  - repeat_option_on_Tuesday ( BOOL )
+  - repeat_option_on_Wednesday ( BOOL )
+  - repeat_option_on_Thursday ( BOOL )
+  - repeat_option_on_Friday ( BOOL )
+  - repeat_option_on_Saturday ( BOOL )
   - repeat_option_monthly_head_origin_in_days ( NULLABLE INT )
   - repeat_option_monthly_tail_origin_in_days ( NULLABLE INT )
-  - repeat_option_annualy ( BOOL )
   - period_option_begin_from ( NULLABLE DATE )
   - period_option_end_at ( NULLABLE DATE )
 
 - ESTIMATIONS
   - id ( PRIMAL INT )
-  - category ( CATEGORIES/id )
+  - target_category_map_linker ( NULLABLER ESTIMATION_TARGET_CATEGORY_MAP/target_category_map_linker )
+    - NULL = all
   - period_option_begin_from ( NULLABLE DATE )
   - period_option_end_at ( NULLABLE DATE )
-
-- FUTURE_TICKET_FACTORIES
-  - id ( PRIMAL INT )
-  - schedule_id ( NULLABLE SCHEDULES/id )
-  - estimation_id ( NULLABLE ESTIMATIONS/id )
   - display_mode ( ENUM
     - perDay
     - perWeek
@@ -67,9 +69,19 @@
     - perYear
   - )
 
+- ESTIMATION_TARGET_CATEGORY_MAP
+  - id ( PRIMAL INT )
+  - target_category_map_linker ( INT )
+  - category_id ( CATEGORIES/id )
+
+- FUTURE_TICKET_FACTORIES
+  - id ( PRIMAL INT )
+  - schedule_id ( NULLABLE SCHEDULES/id )
+  - estimation_id ( NULLABLE ESTIMATIONS/id )
+
 - FUTURE_TICKETS
   - id ( PRIMAL INT )
-  - foctory_id ( INT FUTURE_TICKET_FACTORIES/id )
+  - foctory_id ( FUTURE_TICKET_FACTORIES/id )
   - category ( CATEGORIES/id )
   - supplement ( NULLABLE TEXT )
   - scheduledAt ( DATE )

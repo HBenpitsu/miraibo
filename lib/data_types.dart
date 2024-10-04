@@ -63,7 +63,7 @@ class DisplayTicketConfigurationData {
 // </Display Ticket>
 
 // <Schedule Ticket>
-enum RepeatType { no, interval, week, month }
+enum RepeatType { no, interval, weekly, monthly, anually }
 
 enum DayOfWeek {
   sunday,
@@ -85,7 +85,7 @@ class ScheduleTicketConfigurationData {
   final int amount;
   final RepeatType repeatType;
   final Duration repeatInterval;
-  final DayOfWeek repeatDayOfWeek;
+  final List<DayOfWeek> repeatDayOfWeek;
   final MonthlyRepeatType monthlyRepeatType;
   final DateTime? startDate;
   final DateTime? endDate;
@@ -98,7 +98,7 @@ class ScheduleTicketConfigurationData {
     this.amount = 0,
     this.repeatType = RepeatType.no,
     this.repeatInterval = const Duration(days: 1),
-    this.repeatDayOfWeek = DayOfWeek.sunday,
+    this.repeatDayOfWeek = const [],
     this.monthlyRepeatType = MonthlyRepeatType.fromHead,
     this.startDate,
     this.endDate,
@@ -112,7 +112,7 @@ class ScheduleTicketConfigurationData {
     int? amount,
     RepeatType? repeatType,
     Duration? repeatInterval,
-    DayOfWeek? repeatDayOfWeek,
+    List<DayOfWeek>? repeatDayOfWeek,
     MonthlyRepeatType? monthlyRepeatType,
     DateTime? startDate,
     DateTime? endDate,

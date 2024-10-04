@@ -290,72 +290,13 @@ class DatePickButton extends StatelessWidget {
   }
 }
 
-class TogglePanelController<T> {
-  final List<T> values;
-  final int initialIndex;
-
-  int _selected;
-  T get selected => values[_selected];
-
-  void increment() {
-    _selected++;
-    if (_selected >= values.length) {
-      _selected = 0;
-    }
-    _onChanged(selected);
-  }
-
-  void Function(T)? onChanged;
-  void _onChanged(T value) {
-    if (onChanged != null) {
-      onChanged!(value);
-    }
-  }
-
-  TogglePanelController({
-    required this.values,
-    this.onChanged,
-    this.initialIndex = 0,
-  }) : _selected = initialIndex;
-}
-
-class TapToggleWidgets<T> extends StatefulWidget {
-  final TogglePanelController<T> controller;
-  final List<Widget> children;
-  const TapToggleWidgets({
-    super.key,
-    required this.children,
-    required this.controller,
-  });
-
-  @override
-  State<TapToggleWidgets> createState() => _TapToggleWidgetsState();
-}
-
-class _TapToggleWidgetsState extends State<TapToggleWidgets> {
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        child: SizedBox(
-            height: 30,
-            width: 75,
-            child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                focusColor: Theme.of(context).colorScheme.primaryFixedDim,
-                splashColor: Theme.of(context).colorScheme.primaryFixedDim,
-                onTap: () {
-                  setState(() {
-                    widget.controller.increment();
-                  });
-                },
-                child: widget.children[widget.controller._selected])));
-  }
-}
-
 class MoneyformController {
   int _amount;
   int get amount => _amount;
+  set amount(int value) {
+    _amount = value;
+    _onAmountChanged(value);
+  }
 
   void Function(int)? onAmountChanged;
   void _onAmountChanged(int amount) {
@@ -364,67 +305,132 @@ class MoneyformController {
     }
   }
 
-  void setAmount(int amount) {
-    _amount = amount;
-    _onAmountChanged(amount);
-  }
-
   MoneyformController({int amount = 0, this.onAmountChanged})
       : _amount = amount;
 }
 
-class Moneyform extends StatelessWidget {
+class Moneyform extends StatefulWidget {
   final MoneyformController controller;
   final double? width;
   const Moneyform({super.key, required this.controller, this.width});
 
   @override
+  State<Moneyform> createState() => _MoneyformState();
+}
+
+class _MoneyformState extends State<Moneyform> {
+  late TextEditingController txtCtl;
+  int sign = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    txtCtl = TextEditingController();
+    txtCtl.text = widget.controller.amount.toString();
+  }
+
+  double width() {
+    return widget.width ?? min(200, MediaQuery.of(context).size.width * 0.8);
+  }
+
+  Widget toggle() {
+    if (sign == 1) {
+      return TextButton(
+          onPressed: () {
+            setState(() {
+              sign = -1;
+            });
+            widget.controller.amount = -widget.controller.amount.abs();
+          },
+          child: const Text('income'));
+    } else {
+      return TextButton(
+          onPressed: () {
+            setState(() {
+              sign = 1;
+            });
+            widget.controller.amount = widget.controller.amount.abs();
+          },
+          child: const Text('outcome'));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final TextEditingController txtCtl = TextEditingController();
-    txtCtl.text = controller.amount.toString();
-    var calculatedWidth =
-        width ?? min(200, MediaQuery.of(context).size.width * 0.8);
-    var tapToggleCtl = TogglePanelController<int>(
-      values: [1, -1],
-      onChanged: (value) {
-        controller.setAmount(controller.amount.abs() * value);
-      },
-    );
     return SizedBox(
-        width: calculatedWidth,
+        width: width(),
         child: Row(
           children: [
-            TapToggleWidgets<int>(
-              controller: tapToggleCtl,
-              children: [
-                Center(
-                    child: Text('income',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary))),
-                Center(
-                    child: Text('outcome',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary)))
-              ],
-            ),
+            Padding(
+                padding: const EdgeInsets.only(right: 5),
+                child: SizedBox(width: 85, child: toggle())),
             Expanded(
                 child: TextField(
               controller: txtCtl,
+              onTap: () {
+                txtCtl.selection = TextSelection(
+                    baseOffset: 0, extentOffset: txtCtl.text.length);
+              },
               onChanged: (value) {
                 int amount = int.tryParse(value) ?? 0;
                 if (amount < 0) {
                   amount = 0;
                 }
-                controller.setAmount(tapToggleCtl.selected * amount);
+                widget.controller.amount = sign * amount;
                 txtCtl.text = amount.toString();
               },
               keyboardType: TextInputType.number,
             )),
-            // sizedSpacer
-            const SizedBox(width: 50),
           ],
         ));
   }
 }
+
+// <AI generated code>. to be fixed
+class UnlimitedPeriodSelectorController {
+  bool _unlimited;
+  bool get unlimited => _unlimited;
+  set unlimited(bool value) {
+    _unlimited = value;
+    _onUnlimitedChanged(value);
+  }
+
+  void Function(bool)? onUnlimitedChanged;
+  void _onUnlimitedChanged(bool unlimited) {
+    if (onUnlimitedChanged != null) {
+      onUnlimitedChanged!(unlimited);
+    }
+  }
+
+  UnlimitedPeriodSelectorController(
+      {bool unlimited = false, this.onUnlimitedChanged})
+      : _unlimited = unlimited;
+}
+
+class UnlimitedPeriodSelector extends StatefulWidget {
+  final UnlimitedPeriodSelectorController controller;
+  const UnlimitedPeriodSelector({super.key, required this.controller});
+
+  @override
+  State<UnlimitedPeriodSelector> createState() =>
+      _UnlimitedPeriodSelectorState();
+}
+
+class _UnlimitedPeriodSelectorState extends State<UnlimitedPeriodSelector> {
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        TextButton(
+            onPressed: () {
+              setState(() {
+                widget.controller.unlimited = !widget.controller.unlimited;
+              });
+            },
+            child: Text(widget.controller.unlimited ? 'unlimited' : 'limited')),
+      ],
+    );
+  }
+}
+
+// </AI generated code>. to be fixed
