@@ -388,23 +388,31 @@ class _MoneyformState extends State<Moneyform> {
 
 // <AI generated code>. to be fixed
 class UnlimitedPeriodSelectorController {
-  bool _unlimited;
-  bool get unlimited => _unlimited;
-  set unlimited(bool value) {
-    _unlimited = value;
-    _onUnlimitedChanged(value);
+  DateTime? _start;
+  DateTime? get start => _start;
+  set start(DateTime? value) {
+    _start = value;
+    _onPeriodChanged();
   }
 
-  void Function(bool)? onUnlimitedChanged;
-  void _onUnlimitedChanged(bool unlimited) {
-    if (onUnlimitedChanged != null) {
-      onUnlimitedChanged!(unlimited);
+  DateTime? _end;
+  DateTime? get end => _end;
+  set end(DateTime? value) {
+    _end = value;
+    _onPeriodChanged();
+  }
+
+  void Function()? onPeriodChanged;
+  void _onPeriodChanged() {
+    if (onPeriodChanged != null) {
+      onPeriodChanged!();
     }
   }
 
   UnlimitedPeriodSelectorController(
-      {bool unlimited = false, this.onUnlimitedChanged})
-      : _unlimited = unlimited;
+      {DateTime? start, DateTime? end, this.onPeriodChanged})
+      : _start = start,
+        _end = end;
 }
 
 class UnlimitedPeriodSelector extends StatefulWidget {
@@ -421,13 +429,21 @@ class _UnlimitedPeriodSelectorState extends State<UnlimitedPeriodSelector> {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        TextButton(
-            onPressed: () {
-              setState(() {
-                widget.controller.unlimited = !widget.controller.unlimited;
-              });
-            },
-            child: Text(widget.controller.unlimited ? 'unlimited' : 'limited')),
+        Expanded(
+            child: DatePickButton(
+                controller: DatePickButtonController(
+                    initialDate: widget.controller.start,
+                    onDateSelected: (date) {
+                      widget.controller.start = date;
+                    }))),
+        const Text(' - '),
+        Expanded(
+            child: DatePickButton(
+                controller: DatePickButtonController(
+                    initialDate: widget.controller.end,
+                    onDateSelected: (date) {
+                      widget.controller.end = date;
+                    }))),
       ],
     );
   }
