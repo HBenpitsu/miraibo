@@ -12,3 +12,10 @@
 /mnt/secondaryStorage/miraibo/build/linux/x64/debug/flutter/CMakeFiles/install.dir
 /mnt/secondaryStorage/miraibo/build/linux/x64/debug/flutter/CMakeFiles/install/local.dir
 /mnt/secondaryStorage/miraibo/build/linux/x64/debug/flutter/CMakeFiles/install/strip.dir
+/mnt/secondaryStorage/miraibo/build/linux/x64/debug/plugins/file_selector_linux/CMakeFiles/file_selector_linux_plugin.dir
+/mnt/secondaryStorage/miraibo/build/linux/x64/debug/plugins/file_selector_linux/CMakeFiles/edit_cache.dir
+/mnt/secondaryStorage/miraibo/build/linux/x64/debug/plugins/file_selector_linux/CMakeFiles/rebuild_cache.dir
+/mnt/secondaryStorage/miraibo/build/linux/x64/debug/plugins/file_selector_linux/CMakeFiles/list_install_components.dir
+/mnt/secondaryStorage/miraibo/build/linux/x64/debug/plugins/file_selector_linux/CMakeFiles/install.dir
+/mnt/secondaryStorage/miraibo/build/linux/x64/debug/plugins/file_selector_linux/CMakeFiles/install/local.dir
+/mnt/secondaryStorage/miraibo/build/linux/x64/debug/plugins/file_selector_linux/CMakeFiles/install/strip.dir

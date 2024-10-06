@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:image_picker/image_picker.dart';
 
 // <CustomScroll>
 class MyPageScrollPhysics extends ScrollPhysics {
@@ -245,48 +247,62 @@ class _MutableListFormState<T> extends State<MutableListForm<T>> {
 // </MutableListForm>
 
 class DatePickButtonController {
-  DateTime _selected;
-  DateTime get selected => _selected;
+  DateTime? _selected;
+  DateTime? get selected => _selected;
+  set selected(DateTime? value) {
+    _selected = value;
+    _onDateSelected(value);
+  }
 
-  void Function(DateTime)? onDateSelected;
-  void _onDateSelected(DateTime date) {
+  void Function(DateTime?)? onDateSelected;
+  void _onDateSelected(DateTime? date) {
     if (onDateSelected != null) {
       onDateSelected!(date);
     }
   }
 
   DatePickButtonController({DateTime? initialDate, this.onDateSelected})
-      : _selected = initialDate ?? DateTime.now();
-
-  void setDate(DateTime date) {
-    _selected = date;
-    _onDateSelected(date);
-  }
+      : _selected = initialDate;
 }
 
-class DatePickButton extends StatelessWidget {
+class DatePickButton extends StatefulWidget {
   final DatePickButtonController controller;
-  const DatePickButton({super.key, required this.controller});
+  final String nullLabel;
+  const DatePickButton(
+      {super.key, required this.controller, this.nullLabel = 'unselected'});
 
+  @override
+  State<DatePickButton> createState() => _DatePickButtonState();
+}
+
+class _DatePickButtonState extends State<DatePickButton> {
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
         onPressed: () {
           showDatePicker(
                   context: context,
-                  initialDate: controller.selected,
-                  firstDate: controller.selected
-                      .subtract(const Duration(days: 365 * 200)),
-                  lastDate:
-                      controller.selected.add(const Duration(days: 365 * 200)))
+                  initialDate: widget.controller.selected ?? DateTime.now(),
+                  firstDate: widget.controller.selected == null
+                      ? DateTime.now().subtract(const Duration(days: 365 * 200))
+                      : widget.controller.selected!
+                          .subtract(const Duration(days: 365 * 200)),
+                  lastDate: widget.controller.selected == null
+                      ? DateTime.now().add(const Duration(days: 365 * 200))
+                      : widget.controller.selected!
+                          .add(const Duration(days: 365 * 200)))
               .then((value) {
             if (value != null) {
-              controller.setDate(value);
+              setState(() {
+                widget.controller.selected = value;
+              });
             }
           });
         },
-        child: Text(
-            '${controller.selected.year}-${controller.selected.month}-${controller.selected.day}'));
+        child: widget.controller.selected == null
+            ? Text(widget.nullLabel)
+            : Text(
+                '${widget.controller.selected!.year}/${widget.controller.selected!.month}/${widget.controller.selected!.day}'));
   }
 }
 
@@ -386,12 +402,14 @@ class _MoneyformState extends State<Moneyform> {
   }
 }
 
-// <AI generated code>. to be fixed
 class UnlimitedPeriodSelectorController {
   DateTime? _start;
   DateTime? get start => _start;
   set start(DateTime? value) {
     _start = value;
+    if (_end != null && _start != null && _end!.isBefore(_start!)) {
+      _end = _start;
+    }
     _onPeriodChanged();
   }
 
@@ -399,6 +417,9 @@ class UnlimitedPeriodSelectorController {
   DateTime? get end => _end;
   set end(DateTime? value) {
     _end = value;
+    if (_end != null && _start != null && _end!.isBefore(_start!)) {
+      _start = _end;
+    }
     _onPeriodChanged();
   }
 
@@ -431,22 +452,195 @@ class _UnlimitedPeriodSelectorState extends State<UnlimitedPeriodSelector> {
       children: [
         Expanded(
             child: DatePickButton(
+                nullLabel: 'unlimited',
                 controller: DatePickButtonController(
                     initialDate: widget.controller.start,
                     onDateSelected: (date) {
-                      widget.controller.start = date;
+                      setState(() {
+                        widget.controller.start = date;
+                      });
                     }))),
+        IconButton.filled(
+            onPressed: () {
+              setState(() {
+                widget.controller.start = null;
+              });
+            },
+            icon: const Icon(Icons.autorenew)),
         const Text(' - '),
         Expanded(
             child: DatePickButton(
+                nullLabel: 'unlimited',
                 controller: DatePickButtonController(
                     initialDate: widget.controller.end,
                     onDateSelected: (date) {
-                      widget.controller.end = date;
+                      setState(() {
+                        widget.controller.end = date;
+                      });
                     }))),
+        IconButton.filled(
+            onPressed: () {
+              setState(() {
+                widget.controller.end = null;
+              });
+            },
+            icon: const Icon(Icons.autorenew)),
       ],
     );
   }
 }
 
-// </AI generated code>. to be fixed
+void showErrorDialog(BuildContext context, String message) {
+  showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Error'),
+          content: Text(message),
+          actions: [
+            TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'))
+          ],
+        );
+      });
+}
+
+class PictureSelectorController {
+  File? _picture;
+  File? get picture => _picture;
+  set picture(File? value) {
+    _picture = value;
+    _onChanged();
+  }
+
+  void Function()? onChanged;
+  void _onChanged() {
+    if (onChanged != null) {
+      onChanged!();
+    }
+  }
+
+  PictureSelectorController({File? picture, this.onChanged})
+      : _picture = picture;
+}
+
+class PictureSelectorSection extends StatefulWidget {
+  final PictureSelectorController controller;
+  const PictureSelectorSection({super.key, required this.controller});
+
+  @override
+  State<PictureSelectorSection> createState() => _PictureSelectorSectionState();
+}
+
+class _PictureSelectorSectionState extends State<PictureSelectorSection> {
+  late ImagePicker picker;
+  late Future<void> cameraCtlInitialized;
+
+  @override
+  void initState() {
+    super.initState();
+    picker = ImagePicker();
+  }
+
+  Widget pictureFrame(BuildContext context) {
+    if (widget.controller.picture == null) {
+      return SizedBox(
+          width: 300,
+          height: 500,
+          child: const Center(child: Text('no picture selected')));
+    } else {
+      return SizedBox(
+          width: 300,
+          height: 500,
+          child: Image.file(widget.controller.picture!));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+        child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            const Spacer(),
+            ElevatedButton(
+                onPressed: () async {
+                  final picture =
+                      await picker.pickImage(source: ImageSource.camera);
+                  if (picture == null) {
+                    return;
+                  } else {
+                    setState(() {
+                      widget.controller.picture = File(picture.path);
+                    });
+                  }
+                },
+                child: const Icon(Icons.add_a_photo)),
+            const Spacer(),
+            ElevatedButton(
+                onPressed: () async {
+                  final picture =
+                      await picker.pickImage(source: ImageSource.gallery);
+                  if (picture == null) {
+                    return;
+                  } else {
+                    setState(() {
+                      widget.controller.picture = File(picture.path);
+                    });
+                  }
+                },
+                child: const Icon(Icons.image)),
+            const Spacer(),
+            ElevatedButton(
+                onPressed: () async {
+                  setState(() {
+                    widget.controller.picture = null;
+                  });
+                },
+                child: const Text('detach')),
+            const Spacer(),
+          ],
+        ),
+        pictureFrame(context),
+        Row(
+          children: [
+            const Spacer(),
+          ],
+        )
+      ],
+    ));
+  }
+}
+
+class PictureSelectButton extends StatelessWidget {
+  final PictureSelectorController controller;
+  const PictureSelectButton({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+        onPressed: () {
+          showDialog(
+              context: context,
+              builder: (context) {
+                return AlertDialog(
+                  title: const Text('Select Picture'),
+                  content: PictureSelectorSection(controller: controller),
+                  actions: [
+                    TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text('OK'))
+                  ],
+                );
+              });
+        },
+        child: const Text('Select Picture'));
+  }
+}

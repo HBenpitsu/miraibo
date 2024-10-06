@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:uuid/uuid.dart';
 
@@ -87,8 +88,15 @@ class ScheduleTicketConfigurationData {
   final Duration repeatInterval;
   final List<DayOfWeek> repeatDayOfWeek;
   final MonthlyRepeatType monthlyRepeatType;
-  final DateTime? startDate;
-  final DateTime? endDate;
+  final DateTime? _startDate;
+  DateTime? get startDate => _startDateDesignated ? _startDate : null;
+  final bool _startDateDesignated;
+  bool get startDateDesignated => (_startDate != null) && _startDateDesignated;
+
+  final DateTime? _endDate;
+  DateTime? get endDate => _endDateDesignated ? _endDate : null;
+  final bool _endDateDesignated;
+  bool get endDateDesignated => (_endDate != null) && _endDateDesignated;
 
   const ScheduleTicketConfigurationData({
     this.id,
@@ -100,9 +108,14 @@ class ScheduleTicketConfigurationData {
     this.repeatInterval = const Duration(days: 1),
     this.repeatDayOfWeek = const [],
     this.monthlyRepeatType = MonthlyRepeatType.fromHead,
-    this.startDate,
-    this.endDate,
-  });
+    DateTime? startDate,
+    bool startDateDesignated = false,
+    DateTime? endDate,
+    bool endDateDesignated = false,
+  })  : _startDateDesignated = startDateDesignated,
+        _endDateDesignated = endDateDesignated,
+        _startDate = startDate,
+        _endDate = endDate;
 
   ScheduleTicketConfigurationData copyWith({
     String? id,
@@ -115,7 +128,9 @@ class ScheduleTicketConfigurationData {
     List<DayOfWeek>? repeatDayOfWeek,
     MonthlyRepeatType? monthlyRepeatType,
     DateTime? startDate,
+    bool? startDateDesignated,
     DateTime? endDate,
+    bool? endDateDesignated,
   }) {
     return ScheduleTicketConfigurationData(
       id: id ?? this.id,
@@ -127,8 +142,10 @@ class ScheduleTicketConfigurationData {
       repeatInterval: repeatInterval ?? this.repeatInterval,
       repeatDayOfWeek: repeatDayOfWeek ?? this.repeatDayOfWeek,
       monthlyRepeatType: monthlyRepeatType ?? this.monthlyRepeatType,
-      startDate: startDate ?? this.startDate,
-      endDate: endDate ?? this.endDate,
+      startDate: startDate ?? _startDate,
+      startDateDesignated: startDateDesignated ?? _startDateDesignated,
+      endDate: endDate ?? _endDate,
+      endDateDesignated: endDateDesignated ?? _endDateDesignated,
     );
   }
 }
@@ -144,30 +161,51 @@ enum EstimationTicketContentType {
 
 class EstimationTicketConfigurationData {
   final String? id;
-  final Category? category;
-  final DateTime? startDate;
-  final DateTime? endDate;
+  final List<Category> selectedCategories;
+  final bool selectingAllCategories;
+  final DateTime? _startDate;
+  DateTime? get startDate => _startDateDesignated ? _startDate : null;
+  final bool _startDateDesignated;
+  bool get startDateDesignated => (_startDate != null) && _startDateDesignated;
+  final DateTime? _endDate;
+  DateTime? get endDate => _endDateDesignated ? _endDate : null;
+  final bool _endDateDesignated;
+  bool get endDateDesignated => (_endDate != null) && _endDateDesignated;
   final EstimationTicketContentType contentType;
 
   const EstimationTicketConfigurationData(
       {this.id,
-      this.category,
-      this.startDate,
-      this.endDate,
-      this.contentType = EstimationTicketContentType.perMonth});
+      this.selectedCategories = const <Category>[],
+      this.selectingAllCategories = false,
+      DateTime? startDate,
+      bool startDateDesignated = false,
+      DateTime? endDate,
+      bool endDateDesignated = false,
+      this.contentType = EstimationTicketContentType.perMonth})
+      : _startDate = startDate,
+        _startDateDesignated = startDateDesignated,
+        _endDate = endDate,
+        _endDateDesignated = endDateDesignated;
 
   EstimationTicketConfigurationData copyWith({
     String? id,
-    Category? category,
+    List<Category>? selectedCategories,
+    bool? selectingAllCategories,
     DateTime? startDate,
+    bool? startDateDesignated,
     DateTime? endDate,
+    bool? endDateDesignated,
     EstimationTicketContentType? contentType,
   }) {
     return EstimationTicketConfigurationData(
       id: id ?? this.id,
-      category: category ?? this.category,
+      selectedCategories: selectedCategories ?? this.selectedCategories,
+      selectingAllCategories:
+          selectingAllCategories ?? this.selectingAllCategories,
       startDate: startDate ?? this.startDate,
+      startDateDesignated: startDateDesignated ?? this.startDateDesignated,
       endDate: endDate ?? this.endDate,
+      endDateDesignated: endDateDesignated ?? this.endDateDesignated,
       contentType: contentType ?? this.contentType,
     );
   }
@@ -181,7 +219,10 @@ class LogTicketConfigurationData {
   final String supplementation;
   final DateTime? registorationDate;
   final int amount;
-  final Uri? image;
+  final File? _image;
+  File? get image => _isImageAttached ? _image : null;
+  final bool _isImageAttached;
+  bool get isImageAttached => _image != null && _isImageAttached;
 
   const LogTicketConfigurationData(
       {this.id,
@@ -189,7 +230,10 @@ class LogTicketConfigurationData {
       this.supplementation = '',
       this.registorationDate,
       this.amount = 0,
-      this.image});
+      File? image,
+      bool isImageAttached = false})
+      : _image = image,
+        _isImageAttached = isImageAttached;
 
   LogTicketConfigurationData copyWith({
     String? id,
@@ -197,7 +241,8 @@ class LogTicketConfigurationData {
     String? supplementation,
     DateTime? registorationDate,
     int? amount,
-    Uri? image,
+    File? image,
+    bool? isImageAttached,
   }) {
     return LogTicketConfigurationData(
       id: id ?? this.id,
@@ -206,6 +251,7 @@ class LogTicketConfigurationData {
       registorationDate: registorationDate ?? this.registorationDate,
       amount: amount ?? this.amount,
       image: image ?? this.image,
+      isImageAttached: isImageAttached ?? this.isImageAttached,
     );
   }
 }

@@ -17,6 +17,9 @@ class SingleCategorySelectorController {
     }
   }
 
+  bool _isInitialized = false;
+  bool get isInitialized => _isInitialized;
+
   Category? Function()? _category;
   Category? get selected => _category == null ? null : _category!();
 
@@ -26,24 +29,39 @@ class SingleCategorySelectorController {
       {this.initiallySelectedCategory, this.onUpdate});
 }
 
-class SingleCategorySelector extends StatelessWidget {
+class SingleCategorySelector extends StatefulWidget {
   final SingleCategorySelectorController controller;
   const SingleCategorySelector({super.key, required this.controller});
 
   @override
+  State<SingleCategorySelector> createState() => _SingleCategorySelectorState();
+}
+
+class _SingleCategorySelectorState extends State<SingleCategorySelector> {
+  Category? selected;
+  late Future<List<Category>> optionsFetched;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller._isInitialized = false;
+    widget.controller._category = () => selected;
+    optionsFetched = Category.fetchAll();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    Category? selected;
-    controller._category = () => selected;
     return FutureBuilder(
-      future: Category.fetchAll(),
+      future: optionsFetched,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const CircularProgressIndicator();
         } else if (snapshot.hasError) {
           return Text(snapshot.error.toString());
         } else {
+          widget.controller._isInitialized = true;
           return DropdownMenu<Category>(
-            initialSelection: controller.initiallySelectedCategory,
+            initialSelection: widget.controller.initiallySelectedCategory,
             dropdownMenuEntries: [
               for (Category category in snapshot.data as List<Category>)
                 DropdownMenuEntry<Category>(
@@ -52,23 +70,13 @@ class SingleCategorySelector extends StatelessWidget {
             onSelected: (value) {
               if (value != null) {
                 selected = value;
-                controller._onUpdate(value);
+                widget.controller._onUpdate(value);
               }
             },
           );
         }
       },
     );
-    // return DropdownMenu<Category>(
-    //   dropdownMenuEntries: [
-    //     for (Category category in categoryListMock)
-    //       DropdownMenuEntry<Category>(value: category, label: category.name)
-    //   ],
-    //   onSelected: (value) {
-    //     onUpdate!(value!);
-    //   },
-    //   initiallySelected: initiallySelectedCategory,
-    // );
   }
 }
 
@@ -216,8 +224,8 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
                         });
                         widget.controller._onUpdated();
                       }),
-                      if (!allCategoriesSelected)
-                      MutableListForm(
+                  if (!allCategoriesSelected)
+                    MutableListForm(
                         width: widget.width,
                         deleteButton: true,
                         controller: mutableListCtl,
@@ -227,7 +235,7 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
                         },
                         onItemRemoved: (Category item) {
                           options!.add(item);
-                      })
+                        })
                 ],
               ));
         }

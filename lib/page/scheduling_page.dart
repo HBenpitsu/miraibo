@@ -754,11 +754,21 @@ class TicketContainer extends StatelessWidget {
   Future<Widget> listOfTickets(BuildContext context) async {
     await Future.delayed(
         const Duration(seconds: 1)); // allow other tasks to run
+    DataEditWindowController controller = DataEditWindowController();
     return ListView(
       children: [
-        LogTicket(onPressed: () {}),
-        LogTicket(onPressed: () {}),
-        LogTicket(onPressed: () {})
+        LogTicket(onPressed: () {
+          showDataEditWindow(controller, context,
+              LogTicketConfiguraitonSection(controller: controller));
+        }),
+        LogTicket(onPressed: () {
+          showDataEditWindow(controller, context,
+              LogTicketConfiguraitonSection(controller: controller));
+        }),
+        LogTicket(onPressed: () {
+          showDataEditWindow(controller, context,
+              LogTicketConfiguraitonSection(controller: controller));
+        })
       ],
     );
   }
