@@ -216,7 +216,7 @@ class EstimationTicketConfigurationData {
 class LogTicketConfigurationData {
   final String? id;
   final Category? category;
-  final String supplementation;
+  final String supplement;
   final DateTime? registorationDate;
   final int amount;
   final File? _image;
@@ -227,7 +227,7 @@ class LogTicketConfigurationData {
   const LogTicketConfigurationData(
       {this.id,
       this.category,
-      this.supplementation = '',
+      this.supplement = '',
       this.registorationDate,
       this.amount = 0,
       File? image,
@@ -238,7 +238,7 @@ class LogTicketConfigurationData {
   LogTicketConfigurationData copyWith({
     String? id,
     Category? category,
-    String? supplementation,
+    String? supplement,
     DateTime? registorationDate,
     int? amount,
     File? image,
@@ -247,7 +247,7 @@ class LogTicketConfigurationData {
     return LogTicketConfigurationData(
       id: id ?? this.id,
       category: category ?? this.category,
-      supplementation: supplementation ?? this.supplementation,
+      supplement: supplement ?? this.supplement,
       registorationDate: registorationDate ?? this.registorationDate,
       amount: amount ?? this.amount,
       image: image ?? this.image,

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:miraibo/data_types.dart';
 import 'package:miraibo/ticket_configurator.dart';
 
 import '../general_widget.dart';
@@ -757,18 +758,42 @@ class TicketContainer extends StatelessWidget {
     DataEditWindowController controller = DataEditWindowController();
     return ListView(
       children: [
-        LogTicket(onPressed: () {
-          showDataEditWindow(controller, context,
-              LogTicketConfiguraitonSection(controller: controller));
-        }),
-        LogTicket(onPressed: () {
-          showDataEditWindow(controller, context,
-              LogTicketConfiguraitonSection(controller: controller));
-        }),
-        LogTicket(onPressed: () {
-          showDataEditWindow(controller, context,
-              LogTicketConfiguraitonSection(controller: controller));
-        })
+        LogTicket(
+            data: LogTicketConfigurationData(
+                category: Category.make('dummy category'),
+                supplement: 'test',
+                registorationDate: DateTime.now()),
+            onPressed: () {
+              showDataEditWindow(controller, context,
+                  LogTicketConfiguraitonSection(controller: controller));
+            }),
+        ScheduleTicket(
+            data: ScheduleTicketConfigurationData(
+              category: Category.make('dummy category'),
+              supplement: 'dummy supplement',
+              repeatType: RepeatType.interval,
+              registorationDate: DateTime.now(),
+              startDate: DateTime.now(),
+              startDateDesignated: true,
+              // endDate: DateTime.now(),
+              // endDateDesignated: true,
+            ),
+            onPressed: () {
+              showDataEditWindow(controller, context,
+                  LogTicketConfiguraitonSection(controller: controller));
+            }),
+        DisplayTicket(
+            data: DisplayTicketConfigurationData(),
+            onPressed: () {
+              showDataEditWindow(controller, context,
+                  LogTicketConfiguraitonSection(controller: controller));
+            }),
+        EstimationTicket(
+            data: EstimationTicketConfigurationData(),
+            onPressed: () {
+              showDataEditWindow(controller, context,
+                  LogTicketConfiguraitonSection(controller: controller));
+            }),
       ],
     );
   }

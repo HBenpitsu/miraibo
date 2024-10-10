@@ -965,8 +965,7 @@ class _LogTicketConfiguraitonSectionState
     categorySelectorCtl = SingleCategorySelectorController(
       initiallySelectedCategory: configData.category,
     );
-    supplementationCtl =
-        TextEditingController(text: configData.supplementation);
+    supplementationCtl = TextEditingController(text: configData.supplement);
     registorationDateCtl = DatePickButtonController(
       initialDate: configData.registorationDate,
     );
@@ -982,7 +981,7 @@ class _LogTicketConfiguraitonSectionState
       }
       configData = configData.copyWith(
         category: categorySelectorCtl.selected,
-        supplementation: supplementationCtl.text,
+        supplement: supplementationCtl.text,
         registorationDate: registorationDateCtl.selected,
         amount: amountCtl.amount,
         image: pictureSelectorCtl.picture,

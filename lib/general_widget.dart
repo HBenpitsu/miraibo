@@ -543,6 +543,7 @@ class _PictureSelectorSectionState extends State<PictureSelectorSection> {
   void initState() {
     super.initState();
     picker = ImagePicker();
+    picker.supportsImageSource(ImageSource.gallery);
   }
 
   Widget pictureFrame(BuildContext context) {
@@ -570,13 +571,19 @@ class _PictureSelectorSectionState extends State<PictureSelectorSection> {
             const Spacer(),
             ElevatedButton(
                 onPressed: () async {
-                  final picture =
-                      await picker.pickImage(source: ImageSource.camera);
+                  if (!picker.supportsImageSource(ImageSource.camera)) {
+                    showErrorDialog(context,
+                        'This action is not supported for this device');
+                    return;
+                  }
+                  XFile? picture;
+                  picture = await picker.pickImage(source: ImageSource.camera);
                   if (picture == null) {
                     return;
                   } else {
                     setState(() {
-                      widget.controller.picture = File(picture.path);
+                      // convert XFile to File
+                      widget.controller.picture = File(picture!.path);
                     });
                   }
                 },
@@ -584,13 +591,30 @@ class _PictureSelectorSectionState extends State<PictureSelectorSection> {
             const Spacer(),
             ElevatedButton(
                 onPressed: () async {
-                  final picture =
-                      await picker.pickImage(source: ImageSource.gallery);
+                  if (!picker.supportsImageSource(ImageSource.gallery)) {
+                    showErrorDialog(context,
+                        'This action is not supported for this device');
+                    return;
+                  }
+
+                  XFile? picture;
+                  try {
+                    picture =
+                        await picker.pickImage(source: ImageSource.gallery);
+                  } catch (e) {
+                    if (e is RangeError) {
+                      return;
+                    } else {
+                      rethrow;
+                    }
+                  }
+
                   if (picture == null) {
                     return;
                   } else {
                     setState(() {
-                      widget.controller.picture = File(picture.path);
+                      // convert XFile to File
+                      widget.controller.picture = File(picture!.path);
                     });
                   }
                 },

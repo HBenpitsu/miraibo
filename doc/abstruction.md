@@ -347,7 +347,7 @@ When it's pressed in the `Scheduling Page/Ticket Container`, it opens `Ticket ed
 For this ticket,
 
 - `Category`
-  - single choice
+  - multiple choice
 - period
   - from: the date when the period begins or unlimited
   - until: the date when the period ends or unlimited
