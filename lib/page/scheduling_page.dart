@@ -783,7 +783,10 @@ class TicketContainer extends StatelessWidget {
                   LogTicketConfiguraitonSection(controller: controller));
             }),
         DisplayTicket(
-            data: DisplayTicketConfigurationData(),
+            data: DisplayTicketConfigurationData(targetCategories: [
+              Category.make('dummy'),
+              Category.make('dummy')
+            ], targetingAllCategories: false),
             onPressed: () {
               showDataEditWindow(controller, context,
                   LogTicketConfiguraitonSection(controller: controller));

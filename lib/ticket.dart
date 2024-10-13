@@ -156,8 +156,54 @@ class DisplayTicket extends StatelessWidget {
   final DisplayTicketConfigurationData data;
   const DisplayTicket({super.key, required this.onPressed, required this.data});
 
-  Widget termMode() {
-    return Text('');
+  Widget categoryLabel(BuildContext context) {
+    if (data.targetingAllCategories) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Text(
+            'all categories',
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+        ],
+      );
+    } else {
+      return Row(mainAxisAlignment: MainAxisAlignment.start, children: [
+        Wrap(children: [
+          for (var category in data.targetCategories)
+            Padding(
+                padding: EdgeInsets.only(right: 10),
+                child: Text(category.name,
+                    style: Theme.of(context).textTheme.labelLarge))
+        ])
+      ]);
+    }
+  }
+
+  Widget contentTypeLabel(BuildContext context) {
+    switch (data.contentType) {
+      case DisplayTicketContentType.dailyAverage:
+        return Text('daily average: ',
+            style: Theme.of(context).textTheme.bodyMedium);
+      case DisplayTicketContentType.dailyQuartileAverage:
+        return Text('daily quartile average: ',
+            style: Theme.of(context).textTheme.bodyMedium);
+      case DisplayTicketContentType.monthlyAverage:
+        return Text('monthly average: ',
+            style: Theme.of(context).textTheme.bodyMedium);
+      case DisplayTicketContentType.monthlyQuartileAverage:
+        return Text('monthly quartile average: ',
+            style: Theme.of(context).textTheme.bodyMedium);
+      case DisplayTicketContentType.summation:
+        return Text('summation: ',
+            style: Theme.of(context).textTheme.bodyMedium);
+      default:
+        return Text('---', style: Theme.of(context).textTheme.bodyMedium);
+    }
+  }
+
+  Future<Widget> calcContent() async {
+    return Text('0');
   }
 
   @override
@@ -166,7 +212,26 @@ class DisplayTicket extends StatelessWidget {
         ticketName: 'Display',
         onPressed: onPressed,
         content: Column(
-          children: [],
+          children: [
+            categoryLabel(context),
+            Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [contentTypeLabel(context)]),
+            Spacer(),
+            Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Spacer(),
+                  Spacer(),
+                ]),
+            Spacer(),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [Flexible(child: Text(''))],
+            )
+          ],
         ));
   }
 }
