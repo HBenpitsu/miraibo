@@ -618,7 +618,7 @@ class _PictureSelectorSectionState extends State<PictureSelectorSection> {
                     });
                   }
                 },
-                child: const Icon(Icons.image)),
+                child: const Icon(Icons.add_photo_alternate)),
             const Spacer(),
             ElevatedButton(
                 onPressed: () async {

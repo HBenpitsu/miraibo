@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:miraibo/data_handlers/data_types.dart';
+import 'package:miraibo/data_handlers/objects.dart';
 
 class TicketTemplate extends StatelessWidget {
   final void Function() onPressed;
@@ -140,7 +140,7 @@ class ScheduleTicket extends StatelessWidget {
 
 class DisplayTicket extends StatelessWidget {
   final void Function() onPressed;
-  final DisplayTicketConfigurationData data;
+  final DisplayTicketConfigData data;
   const DisplayTicket({super.key, required this.onPressed, required this.data});
 
   List<String> categoryLabel() {

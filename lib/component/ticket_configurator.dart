@@ -3,7 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:miraibo/component/category.dart';
 import 'package:miraibo/component/general_widget.dart';
-import '../data_handlers/data_types.dart';
+import 'package:miraibo/data_handlers/fetcher.dart';
+import '../data_handlers/objects.dart';
 
 // <data edit modal window> a container of a configuration section
 class DataEditWindowController {
@@ -185,13 +186,13 @@ mixin ConfigSectionState<T extends BasicConfigSectionWidget> on State<T> {
 // <display ticket configurator>
 class DisplayTicketConfigSection extends BasicConfigSectionWidget {
   @override
-  final DisplayTicketConfigurationData initialConfigData;
+  final DisplayTicketConfigData initialConfigData;
   final double? width;
 
   const DisplayTicketConfigSection({
     super.key,
     required super.controller,
-    this.initialConfigData = const DisplayTicketConfigurationData(),
+    this.initialConfigData = const DisplayTicketConfigData(),
     this.width,
   });
 
@@ -203,7 +204,7 @@ class DisplayTicketConfigSection extends BasicConfigSectionWidget {
 class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
     with ConfigSectionState {
   @override
-  covariant late DisplayTicketConfigurationData configData;
+  covariant late DisplayTicketConfigData configData;
   late MultipleCategorySelectorController categorySelectorCtl;
   late DatePickButtonController designatedDateCtl;
 
@@ -386,22 +387,22 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
 // </display ticket configurator>
 
 // <schedule ticket configurator>
-class ScheduleTicketConfiguraitonSection extends BasicConfigSectionWidget {
+class ScheduleTicketConfigSection extends BasicConfigSectionWidget {
   @override
   final ScheduleTicketConfigData initialConfigData;
-  const ScheduleTicketConfiguraitonSection({
+  const ScheduleTicketConfigSection({
     super.key,
     required super.controller,
     this.initialConfigData = const ScheduleTicketConfigData(),
   });
 
   @override
-  State<ScheduleTicketConfiguraitonSection> createState() =>
+  State<ScheduleTicketConfigSection> createState() =>
       _ScheduleTicketConfiguraitonSectionState();
 }
 
 class _ScheduleTicketConfiguraitonSectionState
-    extends State<ScheduleTicketConfiguraitonSection> with ConfigSectionState {
+    extends State<ScheduleTicketConfigSection> with ConfigSectionState {
   @override
   covariant late ScheduleTicketConfigData configData;
   late SingleCategorySelectorController categorySelectorCtl;
@@ -833,23 +834,22 @@ class _ScheduleTicketRepeatSettingSectorState
 // </schedule ticket configurator>
 
 // <estimation ticket configurator>
-class EstimationTicketConfiguraitonSection extends BasicConfigSectionWidget {
+class EstimationTicketConfigSection extends BasicConfigSectionWidget {
   @override
   final EstimationTicketConfigData initialConfigData;
-  const EstimationTicketConfiguraitonSection({
+  const EstimationTicketConfigSection({
     super.key,
     required super.controller,
     this.initialConfigData = const EstimationTicketConfigData(),
   });
 
   @override
-  State<EstimationTicketConfiguraitonSection> createState() =>
+  State<EstimationTicketConfigSection> createState() =>
       _EstimationTicketConfiguraitonSectionState();
 }
 
 class _EstimationTicketConfiguraitonSectionState
-    extends State<EstimationTicketConfiguraitonSection>
-    with ConfigSectionState {
+    extends State<EstimationTicketConfigSection> with ConfigSectionState {
   @override
   covariant late EstimationTicketConfigData configData;
   late MultipleCategorySelectorController categoryCtl;
@@ -1058,7 +1058,7 @@ class _LogTicketConfiguraitonSectionState
   List<Widget> pictureSelector(BuildContext context) {
     return sector(
         context,
-        'Picture',
+        'Picture of receipts',
         PictureSelectButton(
           controller: pictureSelectorCtl,
         ));
@@ -1101,22 +1101,7 @@ class _LogTicketConfigurationSectionWithPresetState
     extends State<LogTicketConfigurationSectionWithPreset> {
   DataEditWindowController sectionCtl = DataEditWindowController();
   late LogTicketConfigData logTicketConfigData;
-  static const int nPreset = 3;
-
-  Future<List<LogTicketConfigData>> fetchPresets() async {
-    // impl: GET PRESET DATA HERE
-    await Future.delayed(Duration(seconds: 1));
-    return List.generate(
-        nPreset,
-        (index) => LogTicketConfigData(
-            category: Category.make('preset $index'),
-            supplement: 'preset $index',
-            registorationDate: DateTime.now(),
-            amount: 1000,
-            image: null,
-            isImageAttached: false));
-  }
-
+  static const int nPreset = 5;
   late Future<List<LogTicketConfigData>> fPresets;
 
   @override
@@ -1131,31 +1116,28 @@ class _LogTicketConfigurationSectionWithPresetState
     });
     // </bypass the event>
     logTicketConfigData = widget.initialConfigData;
-    fPresets = fetchPresets();
+    fPresets = TicketFetcher().fetchLogTicketPresets(nPreset);
   }
 
   void applyPreset(LogTicketConfigData data) {
     setState(() {
-      logTicketConfigData = logTicketConfigData.copyWith(
-        category: data.category,
-        supplement: data.supplement,
-        amount: data.amount,
-      );
+      logTicketConfigData = logTicketConfigData.applyPreset(data);
     });
   }
 
   Widget presets(BuildContext context) {
-    return SingleChildScrollView(
-        child: FutureBuilder(
-            future: fPresets,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const LinearProgressIndicator();
-              }
-              if (snapshot.hasError || snapshot.data == null) {
-                return Text('Error: ${snapshot.error}');
-              }
-              return Row(
+    return FutureBuilder(
+        future: fPresets,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const LinearProgressIndicator();
+          }
+          if (snapshot.hasError || snapshot.data == null) {
+            return Text('Error: ${snapshot.error}');
+          }
+          return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Padding(
@@ -1174,8 +1156,8 @@ class _LogTicketConfigurationSectionWithPresetState
                                   '${snapshot.data![i].category?.name} - ${snapshot.data![i].supplement}')),
                     )
                 ],
-              );
-            }));
+              ));
+        });
   }
 
   @override
@@ -1211,7 +1193,7 @@ class _TicketCreationSectionState extends State<TicketCreationSection>
   TabController? tabController;
 
   DataEditWindowController displayTicketConfigCtl = DataEditWindowController();
-  late DisplayTicketConfigurationData initialDisplayTicketConfigData;
+  late DisplayTicketConfigData initialDisplayTicketConfigData;
   DataEditWindowController scheduleTicketConfigCtl = DataEditWindowController();
   late ScheduleTicketConfigData initialScheduleTicketConfigData;
   DataEditWindowController estimationTicketConfigCtl =
@@ -1245,7 +1227,7 @@ class _TicketCreationSectionState extends State<TicketCreationSection>
       // just close the window
       Navigator.of(context).pop();
     });
-    initialDisplayTicketConfigData = DisplayTicketConfigurationData(
+    initialDisplayTicketConfigData = DisplayTicketConfigData(
       designatedDate: widget.initialDate,
     );
     initialScheduleTicketConfigData = ScheduleTicketConfigData(
@@ -1265,11 +1247,11 @@ class _TicketCreationSectionState extends State<TicketCreationSection>
         controller: displayTicketConfigCtl,
         initialConfigData: initialDisplayTicketConfigData,
       ),
-      ScheduleTicketConfiguraitonSection(
+      ScheduleTicketConfigSection(
         controller: scheduleTicketConfigCtl,
         initialConfigData: initialScheduleTicketConfigData,
       ),
-      EstimationTicketConfiguraitonSection(
+      EstimationTicketConfigSection(
         controller: estimationTicketConfigCtl,
         initialConfigData: initialEstimationTicketConfigData,
       ),
@@ -1285,7 +1267,7 @@ class _TicketCreationSectionState extends State<TicketCreationSection>
       Tab(icon: Icon(Icons.tv), text: 'Display'),
       Tab(icon: Icon(Icons.calendar_today), text: 'Schedule'),
       Tab(icon: Icon(Icons.bar_chart), text: 'Estimation'),
-      Tab(icon: Icon(Icons.app_registration), text: 'Log'),
+      Tab(icon: Icon(Icons.bookmark), text: 'Log'),
     ]);
   }
 

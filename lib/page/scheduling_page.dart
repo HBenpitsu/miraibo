@@ -1,13 +1,15 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:miraibo/data_handlers/data_types.dart';
+import 'package:miraibo/data_handlers/objects.dart';
 import 'package:miraibo/component/ticket_configurator.dart';
 
 import '../component/general_widget.dart';
 import '../component/ticket.dart';
+import '../data_handlers/fetcher.dart';
 
 // SchedulingPage has two screens: MonthlyScreen and DailyScreen
 // The main function of SchedulingPage is to switch between these two screens
@@ -305,7 +307,8 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
   Future<List<DateButton>> makeDateButtons() async {
     List<DateButton> result = [];
     for (int i = 0; i < daysInMonth; i++) {
-      await Future.delayed(Duration.zero); // allow other tasks to run
+      await Future.delayed(
+          Duration(milliseconds: 30)); // allow other tasks to run
       result.add(await DateButton.make(
           DateTime(widget.forThisDate.year, widget.forThisDate.month, i + 1),
           widget.setShownDate,
@@ -419,12 +422,6 @@ class DateButton extends StatelessWidget {
   final void Function() switchToDailyScreen;
   final DateButtonStyle style;
 
-  // Fetching data is needed to calclating styles for DateButtons; it is done in a separate isolate.
-  static Future<DateButtonStyle> _calcStyleFor(DateTime date) async {
-    // For now, it randomly generates a style.
-    return DateButtonStyle.values[Random().nextInt(3)];
-  }
-
   static Future<DateButton> make(DateTime date,
       void Function(DateTime) setShownDate, void Function() switchToDailyScreen,
       {Key? key}) async {
@@ -432,7 +429,7 @@ class DateButton extends StatelessWidget {
         date: date,
         setShownDate: setShownDate,
         switchToDailyScreen: switchToDailyScreen,
-        style: await _calcStyleFor(date));
+        style: await DateButtonStyleCalculator().calcStyle(date));
   }
 
   const DateButton({
@@ -756,72 +753,64 @@ class TicketContainer extends StatelessWidget {
 
   Future<Widget> listOfTickets(BuildContext context) async {
     await Future.delayed(
-        const Duration(seconds: 1)); // allow other tasks to run
-    DataEditWindowController controller = DataEditWindowController();
+        const Duration(milliseconds: 600)); // allow other tasks to run
     return ListView(
       children: [
-        LogTicket(
-            data: LogTicketConfigData(
-                category: Category.make('dummy category'),
-                supplement: 'test',
-                registorationDate: DateTime.now()),
-            onPressed: () {
-              showDataEditWindow(
-                  controller,
-                  context,
-                  LogTicketConfigurationSectionWithPreset(
-                    controller: controller,
-                    initialConfigData: LogTicketConfigData(id: '111'),
-                  ));
-            }),
-        ScheduleTicket(
-            data: ScheduleTicketConfigData(
-              category: Category.make('dummy category'),
-              supplement: 'dummy supplement',
-              repeatType: RepeatType.interval,
-              registorationDate: DateTime.now(),
-              startDate: DateTime.now(),
-              startDateDesignated: true,
-              // endDate: DateTime.now(),
-              // endDateDesignated: true,
-            ),
-            onPressed: () {
-              showDataEditWindow(
-                  controller,
-                  context,
-                  LogTicketConfigurationSectionWithPreset(
-                      controller: controller));
-            }),
-        DisplayTicket(
-            data: DisplayTicketConfigurationData(
-                targetCategories: [
-                  Category.make('dummy'),
-                  Category.make('dummy')
-                ],
-                targetingAllCategories: false,
-                contentType: DisplayTicketContentType.monthlyQuartileAverage,
-                termMode: DisplayTicketTermMode.lastDesignatedPeriod,
-                designatedDate: DateTime.now(),
-                designatedPeriod: DisplayTicketPeriod.halfYear),
-            onPressed: () {
-              showDataEditWindow(
-                  controller,
-                  context,
-                  LogTicketConfigurationSectionWithPreset(
-                      controller: controller));
-            }),
-        EstimationTicket(
-            data: EstimationTicketConfigData(targetCategories: [
-              Category.make('dummy'),
-              Category.make('dummy')
-            ], targetingAllCategories: true),
-            onPressed: () {
-              showDataEditWindow(
-                  controller,
-                  context,
-                  LogTicketConfigurationSectionWithPreset(
-                      controller: controller));
-            }),
+        for (var ticketConfig
+            in await TicketFetcher().fetchTicketConfigsFor(forThisDate))
+          switch (ticketConfig) {
+            DisplayTicketConfigData() => DisplayTicket(
+                onPressed: () {
+                  var controller = DataEditWindowController();
+                  showDataEditWindow(
+                      controller,
+                      context,
+                      DisplayTicketConfigSection(
+                          controller: controller,
+                          initialConfigData: ticketConfig));
+                },
+                data: ticketConfig),
+            ScheduleTicketConfigData() => ScheduleTicket(
+                onPressed: () {
+                  var controller = DataEditWindowController();
+                  showDataEditWindow(
+                      controller,
+                      context,
+                      ScheduleTicketConfigSection(
+                          controller: controller,
+                          initialConfigData: ticketConfig));
+                },
+                data: ticketConfig),
+            EstimationTicketConfigData() => EstimationTicket(
+                onPressed: () {
+                  var controller = DataEditWindowController();
+                  showDataEditWindow(
+                      controller,
+                      context,
+                      EstimationTicketConfigSection(
+                          controller: controller,
+                          initialConfigData: ticketConfig));
+                },
+                data: ticketConfig),
+            LogTicketConfigData() => LogTicket(
+                onPressed: () {
+                  var controller = DataEditWindowController();
+                  showDataEditWindow(
+                      controller,
+                      context,
+                      LogTicketConfiguraitonSection(
+                          controller: controller,
+                          initialConfigData: ticketConfig));
+                },
+                data: ticketConfig),
+            // lines below should not be reached
+            _ => TicketTemplate(
+                onPressed: () {},
+                ticketKind: 'unknown',
+                topLabel: [],
+                content: [Text('broken ticket config was found')],
+                bottomLabel: [])
+          }
       ],
     );
   }

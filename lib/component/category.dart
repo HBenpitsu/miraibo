@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:miraibo/component/general_widget.dart';
 
-import '../data_handlers/data_types.dart';
+import '../data_handlers/objects.dart';
 
 // in this file, we define the category related components
 // including SingleCategorySelector, MultipleCategorySelector, CategoryEditorSection
