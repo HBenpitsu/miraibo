@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import '../category_selector.dart';
+import '../component/category.dart';
 
 class UtilsPage extends StatefulWidget {
   const UtilsPage({super.key});

@@ -8,12 +8,24 @@ class TicketPage extends StatefulWidget {
 }
 
 class _TicketPageState extends State<TicketPage> {
+  Future<ListView> ticketList() async {
+    return ListView();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text('Ticket Page'),
-      ),
+    return Scaffold(
+      body: FutureBuilder(
+          future: ticketList(),
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              return snapshot.data!;
+            } else {
+              return Center(
+                child: const CircularProgressIndicator(),
+              );
+            }
+          }),
     );
   }
 }

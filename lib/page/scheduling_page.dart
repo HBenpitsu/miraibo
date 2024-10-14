@@ -3,11 +3,11 @@ import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:miraibo/data_types.dart';
-import 'package:miraibo/ticket_configurator.dart';
+import 'package:miraibo/data_handlers/data_types.dart';
+import 'package:miraibo/component/ticket_configurator.dart';
 
-import '../general_widget.dart';
-import '../ticket.dart';
+import '../component/general_widget.dart';
+import '../component/ticket.dart';
 
 // SchedulingPage has two screens: MonthlyScreen and DailyScreen
 // The main function of SchedulingPage is to switch between these two screens
@@ -188,6 +188,8 @@ class _MonthlyScreenState extends State<MonthlyScreen> {
   @override
   Widget build(BuildContext context) {
     // not to interrupt page transition, wrap it with FutureBuilder
+    // because rendering MonthlyCalendar widgets is time-consuming
+    // TODO: make it more efficient
     return FutureBuilder(
         future: Future.delayed(MonthlyScreen.buildDelay),
         builder: (context, snapshot) {
@@ -759,16 +761,21 @@ class TicketContainer extends StatelessWidget {
     return ListView(
       children: [
         LogTicket(
-            data: LogTicketConfigurationData(
+            data: LogTicketConfigData(
                 category: Category.make('dummy category'),
                 supplement: 'test',
                 registorationDate: DateTime.now()),
             onPressed: () {
-              showDataEditWindow(controller, context,
-                  LogTicketConfiguraitonSection(controller: controller));
+              showDataEditWindow(
+                  controller,
+                  context,
+                  LogTicketConfigurationSectionWithPreset(
+                    controller: controller,
+                    initialConfigData: LogTicketConfigData(id: '111'),
+                  ));
             }),
         ScheduleTicket(
-            data: ScheduleTicketConfigurationData(
+            data: ScheduleTicketConfigData(
               category: Category.make('dummy category'),
               supplement: 'dummy supplement',
               repeatType: RepeatType.interval,
@@ -779,23 +786,41 @@ class TicketContainer extends StatelessWidget {
               // endDateDesignated: true,
             ),
             onPressed: () {
-              showDataEditWindow(controller, context,
-                  LogTicketConfiguraitonSection(controller: controller));
+              showDataEditWindow(
+                  controller,
+                  context,
+                  LogTicketConfigurationSectionWithPreset(
+                      controller: controller));
             }),
         DisplayTicket(
-            data: DisplayTicketConfigurationData(targetCategories: [
-              Category.make('dummy'),
-              Category.make('dummy')
-            ], targetingAllCategories: false),
+            data: DisplayTicketConfigurationData(
+                targetCategories: [
+                  Category.make('dummy'),
+                  Category.make('dummy')
+                ],
+                targetingAllCategories: false,
+                contentType: DisplayTicketContentType.monthlyQuartileAverage,
+                termMode: DisplayTicketTermMode.lastDesignatedPeriod,
+                designatedDate: DateTime.now(),
+                designatedPeriod: DisplayTicketPeriod.halfYear),
             onPressed: () {
-              showDataEditWindow(controller, context,
-                  LogTicketConfiguraitonSection(controller: controller));
+              showDataEditWindow(
+                  controller,
+                  context,
+                  LogTicketConfigurationSectionWithPreset(
+                      controller: controller));
             }),
         EstimationTicket(
-            data: EstimationTicketConfigurationData(),
+            data: EstimationTicketConfigData(targetCategories: [
+              Category.make('dummy'),
+              Category.make('dummy')
+            ], targetingAllCategories: true),
             onPressed: () {
-              showDataEditWindow(controller, context,
-                  LogTicketConfiguraitonSection(controller: controller));
+              showDataEditWindow(
+                  controller,
+                  context,
+                  LogTicketConfigurationSectionWithPreset(
+                      controller: controller));
             }),
       ],
     );
