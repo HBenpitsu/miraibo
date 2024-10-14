@@ -223,6 +223,13 @@ class DisplayTicket extends StatelessWidget {
                 textBaseline: TextBaseline.alphabetic,
                 children: [
                   Spacer(),
+                  FutureBuilder(future: calcContent(), builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                      return snapshot.data!;
+                    } else {
+                      return Text('---', style: Theme.of(context).textTheme.headlineLarge);
+                    }
+                  }),
                   Spacer(),
                 ]),
             Spacer(),
