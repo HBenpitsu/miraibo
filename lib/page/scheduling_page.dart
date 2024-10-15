@@ -11,8 +11,10 @@ import '../component/general_widget.dart';
 import '../component/ticket.dart';
 import '../data_handlers/fetcher.dart';
 
-// SchedulingPage has two screens: MonthlyScreen and DailyScreen
-// The main function of SchedulingPage is to switch between these two screens
+/* 
+SchedulingPage has two screens: MonthlyScreen and DailyScreen
+The main function of SchedulingPage is to switch between these two screens
+*/
 
 enum Screen { monthly, daily }
 
@@ -67,11 +69,12 @@ class _SchedulingPageState extends State<SchedulingPage> {
   }
 }
 
-// MonthlyScreen has infinite list of MonthlyCalendar widgets
-// Main function of MonthlyScreen is to show a list of MonthlyCalendar widgets
+/* 
+MonthlyScreen has infinite list of MonthlyCalendar widgets
+Main function of MonthlyScreen is to show a list of MonthlyCalendar widgets
 
-// And MonthlyScreen should notify Monthlycalendars to start making buttons when its scrolling is setteled.
-
+And MonthlyScreen should notify Monthlycalendars to start making buttons when its scrolling is setteled.
+*/
 class MonthlyScreen extends StatefulWidget {
   static const Duration buildDelay = Duration(milliseconds: 600);
   static const Duration settleDelay = Duration(milliseconds: 300);
@@ -189,8 +192,10 @@ class _MonthlyScreenState extends State<MonthlyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // not to interrupt page transition, wrap it with FutureBuilder
-    // because rendering MonthlyCalendar widgets is time-consuming
+    /*
+    not to interrupt page transition, wrap it with FutureBuilder
+    because rendering MonthlyCalendar widgets is time-consuming 
+    */
     // TODO: make it more efficient
     return FutureBuilder(
         future: Future.delayed(MonthlyScreen.buildDelay),
@@ -208,15 +213,16 @@ class _MonthlyScreenState extends State<MonthlyScreen> {
   }
 }
 
-// The MonthlyCalendar widget displays a grid of DateButton widgets.
-// Its main function is to arrange DateButton widgets in a calendar format.
-// It also includes a header to show the its month and year.
+/* The MonthlyCalendar widget displays a grid of DateButton widgets.
+Its main function is to arrange DateButton widgets in a calendar format.
+It also includes a header to show the its month and year.
 
-// DataButtons vary in style based on data existance.
-// So, it should handle Future-Object to consult a data provider.
-// Monthlycalendar should also handle Future-Object to show a loading indicator.
+DataButtons vary in style based on data existance.
+So, it should handle Future-Object to consult a data provider.
+Monthlycalendar should also handle Future-Object to show a loading indicator.
 
-// DateButtons are so many that it influences the performance; it supresses ButtonBuilding until it is needed.
+DateButtons are so many that it influences the performance; it supresses ButtonBuilding until it is needed.
+*/
 
 class MonthlyCalendar extends StatefulWidget {
   final DateTime forThisDate;
@@ -404,11 +410,13 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
   }
 }
 
-// DataButton is a button that represents a date.
-// Its main function is to switch to DailyScreen when it is clicked.
+/* 
+DataButton is a button that represents a date.
+Its main function is to switch to DailyScreen when it is clicked.
 
-// DataButtons vary in style based on data existance.
-// So, it should handle Future-Object to consult a data provider.
+DataButtons vary in style based on data existance.
+So, it should handle Future-Object to consult a data provider.
+*/
 
 enum DateButtonStyle {
   hasNothing,
@@ -481,8 +489,10 @@ class DateButton extends StatelessWidget {
   }
 }
 
-// DailyScreen has an infinite horizontal list of TicketContainer widgets, container label and ticket creation button.
-// DailyScreen implement list-function. It updates label content. It instanciate the button.
+/* 
+DailyScreen has an infinite horizontal list of TicketContainer widgets, container label and ticket creation button.
+DailyScreen implement list-function. It updates label content. It instanciate the button.
+*/
 
 class DailyScreen extends StatefulWidget {
   final DateTime initialShownDate;

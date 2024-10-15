@@ -3,7 +3,23 @@ import 'dart:io';
 
 import 'package:uuid/uuid.dart';
 
-// <ticket config data>
+/* 
+This file contains the data classes that define the structure of the data, 
+and the methods to basic data-operations: save, delete, copyWith, etc.
+
+all classes are related to specific 'object' such as single type of ticket, category.
+
+Function to handle the data across objects are defined in the './fecher.dart' file (not included in this file).
+*/
+
+/* 
+Abstract class to bundle: 
+
+- DisplayTicketConfigData
+- ScheduleTicketConfigData
+- EstimationTicketConfigData
+- LogTicketConfigData
+*/
 abstract class TicketConfigData {
   final String? id;
 
