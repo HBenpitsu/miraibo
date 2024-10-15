@@ -1,4 +1,4 @@
-import 'package:miraibo/data_handlers/objects.dart';
+import 'package:miraibo/data/objects.dart';
 
 import '../page/scheduling_page.dart';
 
@@ -40,5 +40,22 @@ class TicketFetcher {
             amount: 1000,
             image: null,
             isImageAttached: false));
+  }
+}
+
+class StatisticalAnalyzer {
+  StatisticalAnalyzer._internal();
+
+  // Singleton instance
+  static final StatisticalAnalyzer _instance = StatisticalAnalyzer._internal();
+  factory StatisticalAnalyzer() => _instance;
+
+  Future<int> calcValueForDisplayTicket(DisplayTicketConfigData data) async {
+    return 0;
+  }
+
+  Future<int> calcValueForEstimationTicket(
+      EstimationTicketConfigData data) async {
+    return 0;
   }
 }

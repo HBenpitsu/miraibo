@@ -2,11 +2,17 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:miraibo/component/category.dart';
-import 'package:miraibo/component/general_widget.dart';
-import 'package:miraibo/data_handlers/fetcher.dart';
-import '../data_handlers/objects.dart';
+import 'package:miraibo/component/configurator_component.dart';
+import 'package:miraibo/data/handler.dart';
+import '../data/objects.dart';
+import 'general_widget.dart';
 
 // <data edit modal window> a container of a configuration section
+/* 
+DataEditWindow is a modal bottom sheet that contains a configuration section.
+Itself has save and delete buttons, and the configuration section is placed in the window.
+To convey save-event and delete-event to the configuration section, it has a controller.
+*/
 class DataEditWindowController {
   void Function()? _saveHandler;
   void Function()? _deleteHandler;
@@ -34,6 +40,7 @@ class DataEditWindowController {
 
 const double dataEditWindowHeightFraction = 0.8;
 
+/// `configurationSection` should have the same `controller` as the `controller` passed to this function to convey save,delete-event.
 void showDataEditWindow(DataEditWindowController controller,
     BuildContext context, Widget configurationSection) {
   showModalBottomSheet(
@@ -72,7 +79,13 @@ void showDataEditWindow(DataEditWindowController controller,
 }
 // </data edit modal window>
 
-// <shared traits>
+// all configurationSections are intended to be passed to showDataEditWindow
+
+// <shared traits> for display, schedule, estimation, log ticket configurators
+/*
+basicConfigSection has controllers to receive save,delete-event.
+And its initial content is defined by initialConfigData.
+*/
 abstract class BasicConfigSectionWidget extends StatefulWidget {
   final DataEditWindowController controller;
   abstract final TicketConfigData initialConfigData;
@@ -80,9 +93,23 @@ abstract class BasicConfigSectionWidget extends StatefulWidget {
   const BasicConfigSectionWidget({super.key, required this.controller});
 }
 
+/* 
+shered behaviors and codes for display, schedule, estimation, log ticket configurators are extracted into this mixin.
+Basic configurators include display, schedule, estimation, and log ticket configuration sections, which extend BasicConfigSectionWidget.
+These basic configurators are directly related to each Ticket type.
+
+The primary responsibility of a basic config section is to convert configData (into String then) into Widgets.
+It should also detect modifications to the data before saving it.
+To achieve this, they typically have controllers for each sub-module and fetch data from these controllers just before saving.
+Some may register listeners to the controllers to detect modifications, as there is no controller that fulfills requirements.
+
+The spacer is used exclusively to make the form scrollable. If the content is near the bottom of the screen, it can be difficult to see or interact with.
+*/
+/// `initSubModuleControllers`, `onSaved`, `contentColumn` should be implemented in the subclass
 mixin ConfigSectionState<T extends BasicConfigSectionWidget> on State<T> {
   abstract TicketConfigData configData;
 
+  /// Titled, Padded part of the form. Expand return value (by `...ret`) and make them children of a Column to conbine multiple sectors.
   List<Widget> sector(BuildContext context, String title, Widget child) {
     return [
       Padding(
@@ -93,9 +120,7 @@ mixin ConfigSectionState<T extends BasicConfigSectionWidget> on State<T> {
     ];
   }
 
-  /*
-  *  spacer to allow the form to scroll 
-  */
+  /// spacer to allow the form to be scrolled
   Widget spacer(BuildContext context) {
     return SizedBox(
       height:
@@ -168,14 +193,14 @@ mixin ConfigSectionState<T extends BasicConfigSectionWidget> on State<T> {
     bindWindowControllerListeners();
   }
 
-  List<Widget> formContent(BuildContext context);
+  List<Widget> contentColumn(BuildContext context);
 
   @override
   Widget build(BuildContext context) {
     return SizedBox.expand(
         child: SingleChildScrollView(
             child: Column(
-      children: formContent(context),
+      children: contentColumn(context),
     )));
   }
 }
@@ -183,7 +208,18 @@ mixin ConfigSectionState<T extends BasicConfigSectionWidget> on State<T> {
 
 // <basic configurators>
 
-// <display ticket configurator>
+/* <display ticket configurator>
+
+Display Ticket Configurator requires:
+
+- Target Categories
+- Term Mode
+
+for all cases.
+
+The other fields are optional and depend on the term mode.
+For more details, such as the options for each field, see the component-structure.md or abstruction.md or implementation.
+*/
 class DisplayTicketConfigSection extends BasicConfigSectionWidget {
   @override
   final DisplayTicketConfigData initialConfigData;
@@ -206,7 +242,7 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
   @override
   covariant late DisplayTicketConfigData configData;
   late MultipleCategorySelectorController categorySelectorCtl;
-  late DatePickButtonController designatedDateCtl;
+  late DatePickButtonController datePickerCtl;
 
   @override
   void initSubModuleControllers() {
@@ -214,7 +250,7 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
       allCategoriesInitiallySelected: configData.targetingAllCategories,
       initiallySelectedCategories: configData.targetCategories,
     );
-    designatedDateCtl = DatePickButtonController(
+    datePickerCtl = DatePickButtonController(
       initialDate: configData.designatedDate,
     );
     // there's no controller for content type
@@ -233,7 +269,7 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
     configData = configData.copyWith(
         targetCategories: categorySelectorCtl.selectedCategories,
         targetingAllCategories: categorySelectorCtl.allCategoriesSelected,
-        designatedDate: designatedDateCtl.selected);
+        designatedDate: datePickerCtl.selected);
     if (!configData.targetingAllCategories &&
         configData.targetCategories.isEmpty) {
       showErrorDialog(
@@ -271,8 +307,7 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
   List<Widget> dateSelectionCalenderForm(BuildContext context) {
     configData = configData.copyWith(
         designatedDate: configData.designatedDate ?? DateTime.now());
-    return sector(
-        context, 'Until', DatePickButton(controller: designatedDateCtl));
+    return sector(context, 'Until', DatePickButton(controller: datePickerCtl));
   }
 
   List<Widget> contentTypeSelector(BuildContext context, {bool fixed = false}) {
@@ -364,7 +399,7 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
   // </components>
 
   @override
-  List<Widget> formContent(BuildContext context) {
+  List<Widget> contentColumn(BuildContext context) {
     return [
       ...targetCategories(context),
       ...termModeSelector(context),
@@ -386,7 +421,23 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
 }
 // </display ticket configurator>
 
-// <schedule ticket configurator>
+/*  <schedule ticket configurator>
+Schedule Ticket Configurator requires:
+
+- Category
+- Supplement
+- Registration Date
+- Amount
+- Repeat Setting
+(Some are optional)
+
+This is similar to Log Ticket Configurator, but it has a complex repeat setting. and do not have pictureSelector.
+This is because schedule ticket exists to generate log tickets automatically.
+
+Repeat setting is extracted into a separated Widget because of its complexity.
+
+For more details, such as the options for each field, see the component-structure.md or abstruction.md or implementation.
+*/
 class ScheduleTicketConfigSection extends BasicConfigSectionWidget {
   @override
   final ScheduleTicketConfigData initialConfigData;
@@ -512,7 +563,7 @@ class _ScheduleTicketConfiguraitonSectionState
   // </components>
 
   @override
-  List<Widget> formContent(BuildContext context) {
+  List<Widget> contentColumn(BuildContext context) {
     return [
       ...categorySelector(context),
       ...supplementationForm(context),
@@ -524,6 +575,11 @@ class _ScheduleTicketConfiguraitonSectionState
   }
 }
 
+/* 
+Repeat Setting is separated from Schedule Ticket Configurator because of its complexity.
+It has a lot of options and it change actions based on the selected options.
+This is because necessary information is different between each repeat type.
+*/
 class ScheduleTicketRepeatSettingSectorController {
   RepeatType _repeatType;
   RepeatType get repeatType => _repeatType;
@@ -833,7 +889,17 @@ class _ScheduleTicketRepeatSettingSectorState
 }
 // </schedule ticket configurator>
 
-// <estimation ticket configurator>
+/* <estimation ticket configurator>
+Estimation Ticket Configurator requires:
+
+- Target Categories
+- Content Type
+- Period
+
+This section is so simple that there is nothing to mention.
+
+For more details, such as the options for each field, see the component-structure.md or abstruction.md or implementation.
+*/
 class EstimationTicketConfigSection extends BasicConfigSectionWidget {
   @override
   final EstimationTicketConfigData initialConfigData;
@@ -943,7 +1009,7 @@ class _EstimationTicketConfiguraitonSectionState
   // </components>
 
   @override
-  List<Widget> formContent(BuildContext context) {
+  List<Widget> contentColumn(BuildContext context) {
     return [
       ...categorySelector(context),
       ...contentTypeSelector(context),
@@ -952,7 +1018,21 @@ class _EstimationTicketConfiguraitonSectionState
     ];
   }
 }
+// </estimation ticket configurator>
 
+/* <log ticket configurator>
+Log Ticket Configurator requires:
+
+- Category
+- Supplement
+- Registration Date
+- Amount
+- Picture of Receipts
+
+some fields are optional, otherwise, there is nothing to mention.
+
+For more details, such as the options for each field, see the component-structure.md or abstruction.md or implementation.
+*/
 class LogTicketConfiguraitonSection extends BasicConfigSectionWidget {
   @override
   final LogTicketConfigData initialConfigData;
@@ -966,9 +1046,7 @@ class LogTicketConfiguraitonSection extends BasicConfigSectionWidget {
   State<LogTicketConfiguraitonSection> createState() =>
       _LogTicketConfiguraitonSectionState();
 }
-// </estimation ticket configurator>
 
-// <log ticket configurator>
 class _LogTicketConfiguraitonSectionState
     extends State<LogTicketConfiguraitonSection> with ConfigSectionState {
   @override
@@ -1065,7 +1143,7 @@ class _LogTicketConfiguraitonSectionState
   }
 
   @override
-  List<Widget> formContent(BuildContext context) {
+  List<Widget> contentColumn(BuildContext context) {
     return [
       ...categorySelector(context),
       ...supplementationForm(context),
@@ -1080,9 +1158,15 @@ class _LogTicketConfiguraitonSectionState
 
 // </basic configurators>
 
-// <application configurators>
+/* <applied configurators>
+Applied Configurators are the configurators which have some additional features.
+*/
 
-// <logTicket section with preset>
+/* <logTicket section with preset>
+It is extension of LogTicketConfiguraitonSection.
+It has a feature to apply preset configurations to the configuration.
+The essential log for presetting is implemented in `data_fetcher.dart` (not here), because it exceeds the scope of UI-definition.
+*/
 class LogTicketConfigurationSectionWithPreset extends StatefulWidget {
   final DataEditWindowController controller;
   final LogTicketConfigData initialConfigData;
@@ -1174,7 +1258,13 @@ class _LogTicketConfigurationSectionWithPresetState
 }
 // </logTicket section with preset>
 
-// <ticket creation section>
+/* <ticket creation section>
+Ticket Creation Section is TabView which contains all the configurators for creating a ticket.
+This is specialized for creating a ticket, so its performance is distinct.
+- It only takes DateTime as an initial value.
+- It have many controllers for each configurator to save the proper data.
+and so on.
+*/
 class TicketCreationSection extends StatefulWidget {
   final DataEditWindowController controller;
   final DateTime initialDate;
@@ -1282,4 +1372,4 @@ class _TicketCreationSectionState extends State<TicketCreationSection>
 
 // </ticket creation section>
 
-// </application configurators>
+// </applied configurators>

@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:miraibo/data_handlers/objects.dart';
+import 'package:miraibo/data/handler.dart';
+import 'package:miraibo/data/objects.dart';
 
+/*
+TicketTemplate is a template widget for displaying tickets.
+Tickets are basically a sized card that contains some information about the data.
+
+Primary responsibility of `Ticket` Widgets is to convert config data into String and then into widgets.
+Generally, the Template helps converting String into widgets.
+*/
 class TicketTemplate extends StatelessWidget {
   final void Function() onPressed;
   final String ticketKind;
@@ -60,6 +68,10 @@ class TicketTemplate extends StatelessWidget {
   }
 }
 
+/* <ticket instances>
+All Tickets do is to convert config data into Widgets.
+Some consult data_handler to calculate the value to display.
+*/
 class LogTicket extends StatelessWidget {
   final void Function() onPressed;
   final LogTicketConfigData data;
@@ -151,13 +163,9 @@ class DisplayTicket extends StatelessWidget {
     }
   }
 
-  Future<num> calcContentValue() async {
-    return 0;
-  }
-
   Widget content(BuildContext context) {
     return FutureBuilder(
-        future: calcContentValue(),
+        future: StatisticalAnalyzer().calcValueForDisplayTicket(data),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done &&
               snapshot.hasData) {
@@ -223,13 +231,9 @@ class EstimationTicket extends StatelessWidget {
     }
   }
 
-  Future<num> calcContentValue() async {
-    return 0;
-  }
-
   Widget content(BuildContext context) {
     return FutureBuilder(
-        future: calcContentValue(),
+        future: StatisticalAnalyzer().calcValueForEstimationTicket(data),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done &&
               snapshot.hasData) {
@@ -273,3 +277,5 @@ class EstimationTicket extends StatelessWidget {
     );
   }
 }
+
+// </ticket instances>

@@ -1,15 +1,14 @@
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:miraibo/data_handlers/objects.dart';
+import 'package:miraibo/data/objects.dart';
 import 'package:miraibo/component/ticket_configurator.dart';
 
-import '../component/general_widget.dart';
+import '../component/motion.dart';
 import '../component/ticket.dart';
-import '../data_handlers/fetcher.dart';
+import '../data/handler.dart';
 
 /* 
 SchedulingPage has two screens: MonthlyScreen and DailyScreen
@@ -491,7 +490,7 @@ class DateButton extends StatelessWidget {
 
 /* 
 DailyScreen has an infinite horizontal list of TicketContainer widgets, container label and ticket creation button.
-DailyScreen implement list-function. It updates label content. It instanciate the button.
+DailyScreen implement list-function. It updates label content. It instanciate the button as a floating button.
 */
 
 class DailyScreen extends StatefulWidget {
@@ -623,6 +622,15 @@ class _DailyScreenState extends State<DailyScreen> {
   }
 }
 
+/*
+TicketContainerLabel is a label that shows the date of the focused TicketContainer.
+
+Although TicketContainers are listed horizontally in daily screen, there is only single Label on the top.
+So, it should be updated when the shown date is changed. This changing feature is fullfilled by _TicketContainerLabelState.
+
+Additionally, the label performs as a button which navigates to MonthlyScreen.
+*/
+
 class TicketContainerLabel extends StatefulWidget {
   final DateTime initDate;
   final void Function() toSwitchMonthlyScreen;
@@ -718,6 +726,11 @@ class _TicketContainerLabelState extends State<TicketContainerLabel> {
   }
 }
 
+/*
+TicketContainer is a container of Tickets. Tickets will be listed vertically in the container.
+TicketContainer implements Ticket listing feature.
+On daily screen, TicketContainers are listed horizontally.
+*/
 class TicketContainer extends StatelessWidget {
   static const double widthMaximumFraction = 0.9;
   static const double maxWidthInPixel = 400;
@@ -840,6 +853,11 @@ class TicketContainer extends StatelessWidget {
   }
 }
 
+/* 
+TicketCreationButton is a button to create a new ticket.
+When it is pressed, it opens the bottom modal sheet which contains configuration sections.
+It appears as a floating button on the daily screen.
+*/
 class TicketCreationButton extends StatelessWidget {
   final DateTime Function() getShownDate;
   const TicketCreationButton({super.key, required this.getShownDate});

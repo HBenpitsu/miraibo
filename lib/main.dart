@@ -3,18 +3,21 @@ import 'page/scheduling_page.dart';
 import 'page/ticket_page.dart';
 import 'page/data_page.dart';
 import 'page/utils_page.dart';
-import 'component/general_widget.dart';
+import 'component/motion.dart';
 
-// This is the main entry point of the application.
-
+/* 
+This is the entry point of the application. 
+*/
 void main() {
   runApp(const MyApp());
 }
 
-// This widget is the root of the application.
-// It defines app-wide properties, colorThemes and behaviors.
-// and home page of the application. home page is the most outer widget of the MaterialApp.
-// In this case, the home page is a TabView with 4 tabs.
+/* 
+This widget is the root of the application.
+It defines app-wide properties, colorThemes and behaviors.
+and home page of the application. home page is the most outer widget of the MaterialApp.
+In this case, the home page is a TabView with 4 tabs.
+*/
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -33,9 +36,11 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// This widget is the main content of the application.
-// The most important part of TabView is 'Page's, which are displayed when the corresponding tab is selected.
-// This widget manages the TabBar and TabBarView, and displays each page.
+/* 
+This widget is the main content of the application.
+The most important part of TabView is 'Page's, which are displayed when the corresponding tab is selected.
+This widget manages the TabBar and TabBarView, and displays each page.
+*/
 class MyTabView extends StatelessWidget {
   const MyTabView({super.key});
 

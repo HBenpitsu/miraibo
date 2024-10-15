@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:miraibo/component/general_widget.dart';
 
-import '../data_handlers/objects.dart';
+import '../data/objects.dart';
 
-// in this file, we define the category related components
-// including SingleCategorySelector, MultipleCategorySelector, CategoryEditorSection
+/* 
+In this file, we define the category related components
+including SingleCategorySelector, MultipleCategorySelector, CategoryEditorSection
 
-// SingleCategorySelector is a dropdown menu that allows user to select one category.
-// MultipleCategorySelector is a list of categories that allows user to select multiple categories.
-// Two above components are used in ticket configurators.
+SingleCategorySelector is a dropdown menu that allows user to select one category.
+MultipleCategorySelector is a mutable list form of categories that allows user to select multiple categories.
+Mutable list form is a list of items that can be added, removed, and updated. It is implemented in general_widget.dart.
+Two above components are used in ticket configurators.
 
-// CategoryEditorSection is a list of categories that allows user to edit, add, and integrate categories.
-// This component is used in the utils page for category management.
+CategoryEditorSection is a mutable list form of categories that allows user to rename, add, and integrate categories.
+This component is used in the utils page for category management.
+*/
 
+/* 
+<SingleCategorySelector>
+SingleCategorySelector is a dropdown menu that allows user to select one category.
+*/
 class SingleCategorySelectorController {
   void Function(Category)? onUpdate;
   void _onUpdate(Category value) {
@@ -23,6 +30,13 @@ class SingleCategorySelectorController {
 
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
+  void Function()? onInitialized;
+  void _onInitialized() {
+    _isInitialized = true;
+    if (onInitialized != null) {
+      onInitialized!();
+    }
+  }
 
   Category? Function()? _category;
   Category? get selected => _category == null ? null : _category!();
@@ -30,12 +44,14 @@ class SingleCategorySelectorController {
   final Category? initiallySelectedCategory;
 
   SingleCategorySelectorController(
-      {this.initiallySelectedCategory, this.onUpdate});
+      {this.initiallySelectedCategory, this.onUpdate, this.onInitialized});
 }
 
 class SingleCategorySelector extends StatefulWidget {
   final SingleCategorySelectorController controller;
-  const SingleCategorySelector({super.key, required this.controller});
+  final FocusNode? focusNode;
+  const SingleCategorySelector(
+      {super.key, required this.controller, this.focusNode});
 
   @override
   State<SingleCategorySelector> createState() => _SingleCategorySelectorState();
@@ -63,8 +79,9 @@ class _SingleCategorySelectorState extends State<SingleCategorySelector> {
         } else if (snapshot.hasError) {
           return Text(snapshot.error.toString());
         } else {
-          widget.controller._isInitialized = true;
+          widget.controller._onInitialized();
           return DropdownMenu<Category>(
+            focusNode: widget.focusNode,
             initialSelection: widget.controller.initiallySelectedCategory,
             dropdownMenuEntries: [
               for (Category category in snapshot.data as List<Category>)
@@ -83,7 +100,19 @@ class _SingleCategorySelectorState extends State<SingleCategorySelector> {
     );
   }
 }
+// </SingleCategorySelector>
 
+/* 
+<MultipleCategorySelector>
+MultipleCategorySelector is a mutable list form of categories that allows user to select multiple categories.
+Mutable list form is a list of items that can be added, removed, and updated. It is implemented in general_widget.dart.
+
+It also provides 'all categories' option, which allows user to select all categories at once.
+When 'all categories' is selected, it hides the rest part.
+
+NOTE: 
+Although it provides rename window when items are pressed, it is not clear whether it is necessary.
+*/
 class MultipleCategorySelectorController {
   void Function()? onUpdate;
   void _onUpdated() {
@@ -98,8 +127,15 @@ class MultipleCategorySelectorController {
   bool Function()? _allCategoriesSelected;
   bool get allCategoriesSelected => _allCategoriesSelected!();
 
-  late bool Function()? _isInitialized;
-  bool get isInitialized => _isInitialized == null ? false : _isInitialized!();
+  bool _isInitialized = false;
+  bool get isInitialized => _isInitialized;
+  void Function()? onInitialized;
+  void _onInitialized() {
+    _isInitialized = true;
+    if (onInitialized != null) {
+      onInitialized!();
+    }
+  }
 
   final List<Category> initiallySelectedCategories;
   final bool allCategoriesInitiallySelected;
@@ -107,14 +143,19 @@ class MultipleCategorySelectorController {
   MultipleCategorySelectorController(
       {this.initiallySelectedCategories = const [],
       this.allCategoriesInitiallySelected = true,
-      this.onUpdate});
+      this.onUpdate,
+      this.onInitialized});
 }
 
 class MultipleCategorySelector extends StatefulWidget {
   final double width;
   final MultipleCategorySelectorController controller;
+  final FocusNode? focusNode;
   const MultipleCategorySelector(
-      {super.key, required this.width, required this.controller});
+      {super.key,
+      required this.width,
+      required this.controller,
+      this.focusNode});
 
   @override
   State<MultipleCategorySelector> createState() =>
@@ -143,6 +184,7 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
         options!.remove(category);
       }
       isInitialized = true;
+      widget.controller._onInitialized();
     });
     // bind methods with controller
     mutableListCtl.onItemUpdated = () {
@@ -150,7 +192,6 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
         widget.controller._onUpdated();
       }
     };
-    widget.controller._isInitialized = () => isInitialized;
     widget.controller._categories = () => mutableListCtl.items;
     widget.controller._allCategoriesSelected = () => allCategoriesSelected;
     // apply initial values
@@ -219,6 +260,7 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
               child: Column(
                 children: [
                   SwitchListTile(
+                      focusNode: widget.focusNode,
                       title: Text('All Categories',
                           style: Theme.of(context).textTheme.bodyLarge),
                       value: allCategoriesSelected,
@@ -247,10 +289,18 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
     );
   }
 }
+// </MultipleCategorySelector>
 
+/* 
+<CategoryEditorSection>
+CategoryEditorSection is a mutable list form of categories that allows user to rename, add, and integrate categories.
+It does not provide category deletion feature. Because all tickets should belong to a single category.
+Instead, it provides category integration feature, which allows user to integrate two categories and to decrease the number of categories.
+*/
 class CategoryEditorSection extends StatefulWidget {
   final double width;
-  const CategoryEditorSection({super.key, required this.width});
+  final FocusNode? focusNode;
+  const CategoryEditorSection({super.key, required this.width, this.focusNode});
 
   @override
   State<CategoryEditorSection> createState() => _CategoryEditorSectionState();
@@ -283,7 +333,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
   }
 
   Widget adderBuilder(BuildContext context) {
-    var focusNode = FocusNode();
+    var focusNode = widget.focusNode ?? FocusNode();
     return Row(children: [
       Expanded(
           child: TextField(
@@ -447,3 +497,4 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
     );
   }
 }
+// </CategoryEditorSection>

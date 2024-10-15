@@ -340,7 +340,7 @@ On `Scheduling Page`, it opens `Ticket edit Window` when pressed.
 
 ## Estimation Ticket
 
-Estimation Ticket exists for estimation. This ticket only appears on `Scheduling Page`.
+Estimation Ticket exists for auto complementation for estimation. This ticket only appears on `Scheduling Page`.
 
 When it's pressed in the `Scheduling Page/Ticket Container`, it opens `Ticket edit Window`.
 
