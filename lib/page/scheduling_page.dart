@@ -436,7 +436,7 @@ class DateButton extends StatelessWidget {
         date: date,
         setShownDate: setShownDate,
         switchToDailyScreen: switchToDailyScreen,
-        style: await DateButtonStyleCalculator().calcStyle(date));
+        style: await TicketDataManager().calcStyleForDateButton(date));
   }
 
   const DateButton({
@@ -780,7 +780,7 @@ class TicketContainer extends StatelessWidget {
     return ListView(
       children: [
         for (var ticketConfig
-            in await TicketFetcher().fetchTicketConfigsFor(forThisDate))
+            in await TicketDataManager().fetchTicketConfigsFor(forThisDate))
           switch (ticketConfig) {
             DisplayTicketConfigData() => DisplayTicket(
                 onPressed: () {

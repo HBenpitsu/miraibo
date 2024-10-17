@@ -40,7 +40,7 @@ class DataEditWindowController {
 
 const double dataEditWindowHeightFraction = 0.8;
 
-/// `configurationSection` should have the same `controller` as the `controller` passed to this function to convey save,delete-event.
+/// [configurationSection] should have the same [controller] as the [controller] passed to this function to convey save,delete-event.
 void showDataEditWindow(DataEditWindowController controller,
     BuildContext context, Widget configurationSection) {
   showModalBottomSheet(
@@ -105,7 +105,7 @@ Some may register listeners to the controllers to detect modifications, as there
 
 The spacer is used exclusively to make the form scrollable. If the content is near the bottom of the screen, it can be difficult to see or interact with.
 */
-/// `initSubModuleControllers`, `onSaved`, `contentColumn` should be implemented in the subclass
+/// [initSubModuleControllers], [onSaved], [contentColumn] should be implemented in the subclass
 mixin ConfigSectionState<T extends BasicConfigSectionWidget> on State<T> {
   abstract TicketConfigData configData;
 
@@ -1200,7 +1200,7 @@ class _LogTicketConfigurationSectionWithPresetState
     });
     // </bypass the event>
     logTicketConfigData = widget.initialConfigData;
-    fPresets = TicketFetcher().fetchLogTicketPresets(nPreset);
+    fPresets = TicketDataManager().fetchLogTicketPresets(nPreset);
   }
 
   void applyPreset(LogTicketConfigData data) {

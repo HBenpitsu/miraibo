@@ -97,7 +97,7 @@ class MutableListFormController<T> {
   }
 }
 
-class MutableListForm<T> extends StatefulWidget {
+abstract class MutableListForm<T> extends StatefulWidget {
   final MutableListFormController<T> controller;
 
   final void Function(T)? onItemTapped;
@@ -114,26 +114,17 @@ class MutableListForm<T> extends StatefulWidget {
     }
   }
 
-  final bool deleteButton;
-
-  final Widget Function(BuildContext) adderBuilder;
-
-  final double width;
+  final double? width;
 
   const MutableListForm(
       {super.key,
       required this.controller,
-      required this.deleteButton,
-      required this.adderBuilder,
-      required this.width,
+      this.width,
       this.onItemTapped,
       this.onItemRemoved});
-
-  @override
-  State<MutableListForm<T>> createState() => _MutableListFormState<T>();
 }
 
-class _MutableListFormState<T> extends State<MutableListForm<T>> {
+mixin _MutableListFormState<M extends <T>MutableListForm> extends State<M> {
   @override
   void initState() {
     super.initState();
@@ -143,10 +134,12 @@ class _MutableListFormState<T> extends State<MutableListForm<T>> {
     };
   }
 
+  void onItemTapped(T item);
+
   Widget rowContent(BuildContext context, T item) {
     return TextButton(
         onPressed: () {
-          widget._onItemTapped(item);
+          onItemTapped(item);
         },
         child: SizedBox(
             height: 50,
@@ -169,30 +162,20 @@ class _MutableListFormState<T> extends State<MutableListForm<T>> {
     );
   }
 
-  Widget row(BuildContext context, T item) {
-    if (widget.deleteButton) {
-      return Row(children: [
+  Widget rowWithDeleteButton(BuildContext context, T item) {
+    Row(children: [
         Expanded(child: rowContent(context, item)),
         deleteButton(context, item),
       ]);
-    } else {
+  }
+
+  Widget plainRow(BuildContext context, T item) {
       return Padding(
           padding: const EdgeInsets.only(top: 2),
           child: rowContent(context, item));
-    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-        width: widget.width,
-        child: Column(
-          children: [
-            for (T item in widget.controller.items) row(context, item),
-            widget.adderBuilder(context)
-          ],
-        ));
-  }
+  Widget itemAdder(BuildContext context);
 }
 // </MutableListForm>
 

@@ -263,9 +263,8 @@ class EstimationTicketConfigData extends TicketConfigData {
   }) {
     return EstimationTicketConfigData(
       id: id ?? this.id,
-      targetCategories: selectedCategories ?? this.targetCategories,
-      targetingAllCategories:
-          selectingAllCategories ?? this.targetingAllCategories,
+      targetCategories: selectedCategories ?? targetCategories,
+      targetingAllCategories: selectingAllCategories ?? targetingAllCategories,
       startDate: startDate ?? this.startDate,
       startDateDesignated: startDateDesignated ?? this.startDateDesignated,
       endDate: endDate ?? this.endDate,
