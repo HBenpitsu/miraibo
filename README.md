@@ -33,6 +33,13 @@ fvm install stable
 
 If you prefer not to use FVM, you can still proceed, but please ensure you have the correct version of Flutter installed and configured.
 
+To get dependencies, execute following commands:
+
+```console
+fvm flutter pub get
+fvm dart run sqflite_common_ffi_web:setup
+```
+
 ## Way to Develop
 
 You only need to edit files in the `lib` directory. The `doc` directory, created by `hbenpitsu`, contains documentation that I highly recommend consulting when reading code in the `lib` directory. Additionally, please update the documentation when you write new code.
