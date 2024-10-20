@@ -6,27 +6,16 @@ MutableListForm is a abstract widget that are intended to wrapped with another w
 It is a list of items that can be added, removed, and updated.
 However, the update of items cannot be observed by MutableListForm itself, so it provides a function: invokeRebuild
 When some items are added or removed, it sets state and rebuild by itself.
-And, way to adding items varies by Wrapper widgets, so it requires adderBuilder.
-adderBuilder is a function that returns a widget. The returned widget is placed at the bottom of the list.
-Delete button feature also varies by Wrapper widgets, so it is optional here.
+And, way to adding items varies by Wrapper widgets, so it requires [itemAdder].
+[itemAdder] is a function that returns a widget. The returned widget is placed at the bottom of the list.
 
 The instances of Wrapper widgets are:
 - MultipleCategorySelector
 - CategoryEditor
 
-Although this class can be transfered to category.dart, it is not related to `Category` directly.
-That why this class is placed here.
-
-TODO: MAKE THIS ABSTRACT CLASS or MIXIN, and MODIFY THE WRAPPER WIDGETS
 */
 class MutableListFormController<T> {
   final List<T> items;
-  void Function()? onItemUpdated;
-  void _onItemUpdated() {
-    if (onItemUpdated != null) {
-      onItemUpdated!();
-    }
-  }
 
   void Function(T)? onItemAdded;
   void _onItemAdded(T item) {
@@ -58,23 +47,24 @@ class MutableListFormController<T> {
   }
 
   MutableListFormController(
-      {required this.items,
+      {List<T>? items,
       this.toLabel,
       this.onItemAdded,
       this.onItemRemoved,
-      this.invokeRebuild});
+      this.invokeRebuild})
+      : items = items == null
+            ? <T>[]
+            : [...items]; // to make items mutable, copy it
 
   void addItem(T item) {
     items.add(item);
     _onItemAdded(item);
-    _onItemUpdated();
     _invokeRebuild();
   }
 
   void removeItem(T item) {
     items.remove(item);
     _onItemRemoved(item);
-    _onItemUpdated();
     _invokeRebuild();
   }
 
@@ -83,7 +73,6 @@ class MutableListFormController<T> {
       items.add(item);
       _onItemAdded(item);
     }
-    _onItemUpdated();
     _invokeRebuild();
   }
 
@@ -92,90 +81,77 @@ class MutableListFormController<T> {
       items.remove(item);
       _onItemRemoved(item);
     }
-    _onItemUpdated();
     _invokeRebuild();
   }
 }
 
-abstract class MutableListForm<T> extends StatefulWidget {
+class MutableListForm<T> extends StatefulWidget {
   final MutableListFormController<T> controller;
-
-  final void Function(T)? onItemTapped;
-  void _onItemTapped(T item) {
-    if (onItemTapped != null) {
-      onItemTapped!(item);
-    }
-  }
-
-  final void Function(T)? onItemRemoved;
-  void _onItemRemoved(T item) {
-    if (onItemRemoved != null) {
-      onItemRemoved!(item);
-    }
-  }
-
-  final double? width;
+  final void Function(T item) onItemTapped;
+  final Widget Function(BuildContext context)? itemContent;
+  final Widget Function(BuildContext context) itemAdder;
 
   const MutableListForm(
       {super.key,
       required this.controller,
-      this.width,
-      this.onItemTapped,
-      this.onItemRemoved});
+      required this.onItemTapped,
+      this.itemContent,
+      required this.itemAdder});
+
+  @override
+  State<MutableListForm<T>> createState() => MutableListFormState<T>();
 }
 
-mixin _MutableListFormState<M extends <T>MutableListForm> extends State<M> {
-  @override
-  void initState() {
-    super.initState();
-    // bind methods to controller
+class MutableListFormState<T> extends State<MutableListForm<T>> {
+  void bindRebuildCallback() {
     widget.controller.invokeRebuild = () {
       setState(() {});
     };
   }
 
-  void onItemTapped(T item);
-
-  Widget rowContent(BuildContext context, T item) {
-    return TextButton(
-        onPressed: () {
-          onItemTapped(item);
-        },
-        child: SizedBox(
-            height: 50,
-            child: Center(
-                child: Text(
-                    widget.controller._toLabel(item) ?? item.toString()))));
+  @override
+  void initState() {
+    super.initState();
+    // bind methods to controller
+    bindRebuildCallback();
   }
 
-  Widget deleteButton(BuildContext context, item) {
-    return Card(
-      color: Theme.of(context).colorScheme.primaryContainer,
-      child: IconButton(
-        icon: const Icon(Icons.delete),
-        color: Theme.of(context).colorScheme.primary,
-        onPressed: () {
-          widget.controller.removeItem(item);
-          widget._onItemRemoved(item);
-        },
-      ),
+  // <components>
+
+  Widget itemContent(BuildContext context, T val) {
+    if (widget.itemContent != null) {
+      return widget.itemContent!(context);
+    }
+    return Text(widget.controller._toLabel(val) ?? val.toString());
+  }
+
+  Widget item(BuildContext context, T val) {
+    return Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: TextButton(
+            onPressed: () {
+              widget.onItemTapped(val);
+            },
+            style: ButtonStyle(
+              shape: WidgetStatePropertyAll<RoundedRectangleBorder>(
+                  RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5.0))),
+            ),
+            child: SizedBox(
+                height: 50, child: Center(child: itemContent(context, val)))));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (T val in widget.controller.items) item(context, val),
+        widget.itemAdder(context),
+      ],
     );
   }
-
-  Widget rowWithDeleteButton(BuildContext context, T item) {
-    Row(children: [
-        Expanded(child: rowContent(context, item)),
-        deleteButton(context, item),
-      ]);
-  }
-
-  Widget plainRow(BuildContext context, T item) {
-      return Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: rowContent(context, item));
-  }
-
-  Widget itemAdder(BuildContext context);
+  // </components>
 }
 // </MutableListForm>
 

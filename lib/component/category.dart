@@ -107,11 +107,15 @@ class _SingleCategorySelectorState extends State<SingleCategorySelector> {
 MultipleCategorySelector is a mutable list form of categories that allows user to select multiple categories.
 Mutable list form is a list of items that can be added, removed, and updated. It is implemented in general_widget.dart.
 
+itemAdder: 
+a dropdown menu that allows user to add a category to selection.
+When a category is added, it is removed from the dropdown menu.
+
+onItemTapped:
+When an item is tapped, it is removed from the selection.
+
 It also provides 'all categories' option, which allows user to select all categories at once.
 When 'all categories' is selected, it hides the rest part.
-
-NOTE: 
-Although it provides rename window when items are pressed, it is not clear whether it is necessary.
 */
 class MultipleCategorySelectorController {
   void Function()? onUpdate;
@@ -121,11 +125,11 @@ class MultipleCategorySelectorController {
     }
   }
 
-  List<Category> Function()? _categories;
-  List<Category> get selectedCategories => _categories!();
+  late List<Category> Function() _categories;
+  List<Category> get selectedCategories => _categories();
 
-  bool Function()? _allCategoriesSelected;
-  bool get allCategoriesSelected => _allCategoriesSelected!();
+  late bool Function() _allCategoriesSelected;
+  bool get allCategoriesSelected => _allCategoriesSelected();
 
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
@@ -148,14 +152,12 @@ class MultipleCategorySelectorController {
 }
 
 class MultipleCategorySelector extends StatefulWidget {
-  final double width;
   final MultipleCategorySelectorController controller;
   final FocusNode? focusNode;
+  final double? width;
+
   const MultipleCategorySelector(
-      {super.key,
-      required this.width,
-      required this.controller,
-      this.focusNode});
+      {super.key, this.width, required this.controller, this.focusNode});
 
   @override
   State<MultipleCategorySelector> createState() =>
@@ -163,92 +165,71 @@ class MultipleCategorySelector extends StatefulWidget {
 }
 
 class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
-  late final Future<void> optionsFetched;
-  List<Category>? options;
+  late List<Category> options;
   late final MutableListFormController<Category> mutableListCtl;
   bool allCategoriesSelected = false;
-
   bool isInitialized = false;
+
+  late final Future<void> optionsInitialized;
+  Future<void> initializeOptions() async {
+    options = await Category.fetchAll();
+    for (Category category in widget.controller.initiallySelectedCategories) {
+      options.remove(category);
+    }
+    isInitialized = true;
+    widget.controller._onInitialized();
+  }
 
   @override
   void initState() {
     super.initState();
+    // apply initial values
+    allCategoriesSelected = widget.controller.allCategoriesInitiallySelected;
+    optionsInitialized = initializeOptions();
     // initialize controller
     mutableListCtl = MutableListFormController<Category>(
-      items: [],
+      items: widget.controller.initiallySelectedCategories,
       toLabel: (item) => item.name,
     );
-    optionsFetched = Future(() async {
-      options = await Category.fetchAll();
-      for (Category category in widget.controller.initiallySelectedCategories) {
-        options!.remove(category);
-      }
-      isInitialized = true;
-      widget.controller._onInitialized();
-    });
-    // bind methods with controller
-    mutableListCtl.onItemUpdated = () {
-      if (isInitialized) {
-        widget.controller._onUpdated();
-      }
+    mutableListCtl.onItemAdded = (item) {
+      options.remove(item);
+      widget.controller._onUpdated();
     };
+    mutableListCtl.onItemRemoved = (item) {
+      options.add(item);
+      widget.controller._onUpdated();
+    };
+    // bind properties to controller
     widget.controller._categories = () => mutableListCtl.items;
     widget.controller._allCategoriesSelected = () => allCategoriesSelected;
-    // apply initial values
-    mutableListCtl.addAllItems(widget.controller.initiallySelectedCategories);
-    allCategoriesSelected = widget.controller.allCategoriesInitiallySelected;
   }
 
-  List<DropdownMenuEntry<Category>> generateDropdownMenuEntries() {
+  List<DropdownMenuEntry<Category>> dropdownMenuEntries() {
     return [
-      for (Category category in options!)
+      for (Category category in options)
         DropdownMenuEntry<Category>(value: category, label: category.name)
     ];
   }
 
-  Widget adderBuilder(BuildContext context) {
+  Widget itemAdder(BuildContext context) {
     var dropDownCtl = TextEditingController();
     return DropdownMenu<Category>(
-      controller: dropDownCtl,
       width: widget.width,
-      dropdownMenuEntries: generateDropdownMenuEntries(),
+      controller: dropDownCtl,
+      dropdownMenuEntries: dropdownMenuEntries(),
       onSelected: (value) {
         if (value != null) {
           mutableListCtl.addItem(value);
-          options!.remove(value);
           dropDownCtl.clear();
         }
       },
     );
   }
 
-  void showRenameDialog(BuildContext context, Category item) {
-    showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Rename Category'),
-            content: TextField(
-              controller: TextEditingController(text: item.name),
-              onChanged: (value) {
-                item.rename(value);
-              },
-            ),
-            actions: [
-              TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('OK')),
-            ],
-          );
-        });
-  }
-
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: optionsFetched,
+      future: optionsInitialized,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const CircularProgressIndicator();
@@ -272,16 +253,12 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
                       }),
                   if (!allCategoriesSelected)
                     MutableListForm(
-                        width: widget.width,
-                        deleteButton: true,
-                        controller: mutableListCtl,
-                        adderBuilder: adderBuilder,
-                        onItemTapped: (Category item) {
-                          showRenameDialog(context, item);
-                        },
-                        onItemRemoved: (Category item) {
-                          options!.add(item);
-                        })
+                      controller: mutableListCtl,
+                      onItemTapped: (item) {
+                        mutableListCtl.removeItem(item);
+                      },
+                      itemAdder: itemAdder,
+                    )
                 ],
               ));
         }
@@ -296,11 +273,17 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
 CategoryEditorSection is a mutable list form of categories that allows user to rename, add, and integrate categories.
 It does not provide category deletion feature. Because all tickets should belong to a single category.
 Instead, it provides category integration feature, which allows user to integrate two categories and to decrease the number of categories.
+
+itemAdder: 
+a text field and a button that allows user to make a new category.
+
+onItemTapped:
+When an item is tapped, it opens a dialog that allows user to rename, integrate the category with another category.
 */
 class CategoryEditorSection extends StatefulWidget {
-  final double width;
   final FocusNode? focusNode;
-  const CategoryEditorSection({super.key, required this.width, this.focusNode});
+  final double? width;
+  const CategoryEditorSection({super.key, this.width, this.focusNode});
 
   @override
   State<CategoryEditorSection> createState() => _CategoryEditorSectionState();
@@ -311,19 +294,21 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
   late final TextEditingController textCtl;
   late final Future<void> categoriesFetched;
 
+  Future<void> initializeMutableList() async {
+    mutableListCtl = MutableListFormController<Category>(
+      items: await Category.fetchAll(),
+      toLabel: (item) => item.name,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
-    categoriesFetched = Future(() async {
-      mutableListCtl = MutableListFormController<Category>(
-        items: await Category.fetchAll(),
-        toLabel: (item) => item.name,
-      );
-    });
+    categoriesFetched = initializeMutableList();
     textCtl = TextEditingController(text: '');
   }
 
-  List<DropdownMenuEntry<Category>> generateDropdownMenuEntries(
+  List<DropdownMenuEntry<Category>> dropdownMenuEntriesToIntegration(
       Category focused) {
     return [
       for (Category category in mutableListCtl.items)
@@ -332,7 +317,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
     ];
   }
 
-  Widget adderBuilder(BuildContext context) {
+  Widget itemAdder(BuildContext context) {
     var focusNode = widget.focusNode ?? FocusNode();
     return Row(children: [
       Expanded(
@@ -437,6 +422,10 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
               TextField(
                 controller: TextEditingController(text: item.name),
                 onChanged: (value) {
+                  // on Item Updated, invoke rebuild should be called
+                  if (mutableListCtl.invokeRebuild != null) {
+                    mutableListCtl.invokeRebuild!();
+                  }
                   item.rename(value);
                 },
               ),
@@ -461,7 +450,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
                               selected = value;
                             },
                             dropdownMenuEntries:
-                                generateDropdownMenuEntries(item))),
+                                dropdownMenuEntriesToIntegration(item))),
                   ])),
             ]),
             actions: [
@@ -485,14 +474,14 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
         } else if (snapshot.hasError) {
           return Text(snapshot.error.toString());
         }
-        return MutableListForm(
-            controller: mutableListCtl,
+        return SizedBox(
             width: widget.width,
-            deleteButton: false,
-            onItemTapped: (Category item) {
-              showCategoryEditorWindow(context, item);
-            },
-            adderBuilder: adderBuilder);
+            child: MutableListForm(
+                controller: mutableListCtl,
+                onItemTapped: (Category item) {
+                  showCategoryEditorWindow(context, item);
+                },
+                itemAdder: itemAdder));
       },
     );
   }

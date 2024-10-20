@@ -276,11 +276,20 @@ class UnlimitedPeriodSelector extends StatefulWidget {
 }
 
 class _UnlimitedPeriodSelectorState extends State<UnlimitedPeriodSelector> {
+  static double buttonHeight = 40;
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
+    return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Row(
+        // start date
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'start date: ',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          SizedBox(
+            height: buttonHeight,
             child: DatePickButton(
                 focusNode: widget.focusNode,
                 nullLabel: 'unlimited',
@@ -290,16 +299,34 @@ class _UnlimitedPeriodSelectorState extends State<UnlimitedPeriodSelector> {
                       setState(() {
                         widget.controller.start = date;
                       });
-                    }))),
-        IconButton.filled(
-            onPressed: () {
-              setState(() {
-                widget.controller.start = null;
-              });
-            },
-            icon: const Icon(Icons.autorenew)),
-        const Text(' - '),
-        Expanded(
+                    })),
+          ),
+          SizedBox(width: 4), //padding
+          SizedBox(
+            height: buttonHeight,
+            child: IconButton.filled(
+                onPressed: () {
+                  setState(() {
+                    widget.controller.start = null;
+                  });
+                },
+                icon: const Icon(Icons.autorenew)),
+          ),
+        ],
+      ),
+      SizedBox(
+        height: 5,
+      ), //spacing
+      Row(
+        // end date
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '  end date: ',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          SizedBox(
+            height: buttonHeight,
             child: DatePickButton(
                 nullLabel: 'unlimited',
                 controller: DatePickButtonController(
@@ -308,16 +335,22 @@ class _UnlimitedPeriodSelectorState extends State<UnlimitedPeriodSelector> {
                       setState(() {
                         widget.controller.end = date;
                       });
-                    }))),
-        IconButton.filled(
-            onPressed: () {
-              setState(() {
-                widget.controller.end = null;
-              });
-            },
-            icon: const Icon(Icons.autorenew)),
-      ],
-    );
+                    })),
+          ),
+          SizedBox(width: 4), //padding
+          SizedBox(
+            height: buttonHeight,
+            child: IconButton.filled(
+                onPressed: () {
+                  setState(() {
+                    widget.controller.end = null;
+                  });
+                },
+                icon: const Icon(Icons.autorenew)),
+          )
+        ],
+      )
+    ]);
   }
 }
 // </UnlimitedPeriodSelector>
