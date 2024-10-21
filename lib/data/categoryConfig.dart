@@ -1,7 +1,7 @@
 import 'dart:developer' as developer;
 import 'dart:io';
 
-import 'package:uuid/uuid.dart';
+import './repository.dart';
 
 /* 
 This file contains the data classes that define the structure of the data, 
@@ -21,36 +21,42 @@ Abstract class to bundle:
 - LogTicketConfigData
 */
 abstract class TicketConfigData {
-  final String? id;
+  final int? id;
 
   const TicketConfigData({this.id});
 
   void save();
   void delete();
 
-  TicketConfigData copyWith({String? id});
+  TicketConfigData copyWith({int? id});
 }
 
 // <Display Ticket>
 enum DisplayTicketTermMode {
   untilToday,
   lastDesignatedPeriod,
-  untilDesignatedDate
+  untilDesignatedDate;
 }
 
-enum DisplayTicketPeriod { week, month, halfYear, year }
+enum DisplayTicketPeriod {
+  week,
+  month,
+  halfYear,
+  year;
+}
 
 enum DisplayTicketContentType {
   dailyAverage,
   dailyQuartileAverage,
   monthlyAverage,
   monthlyQuartileAverage,
-  summation,
+  summation;
 }
 
 class DisplayTicketConfigData extends TicketConfigData {
   final List<Category> targetCategories;
   final bool targetingAllCategories;
+  final int linker;
   final DisplayTicketTermMode termMode;
   final DateTime? designatedDate;
   final DisplayTicketPeriod designatedPeriod;
@@ -60,6 +66,7 @@ class DisplayTicketConfigData extends TicketConfigData {
     super.id,
     this.targetCategories = const <Category>[],
     this.targetingAllCategories = true,
+    this.linker = 0,
     this.termMode = DisplayTicketTermMode.untilToday,
     this.designatedDate,
     this.designatedPeriod = DisplayTicketPeriod.week,
@@ -80,9 +87,10 @@ class DisplayTicketConfigData extends TicketConfigData {
 
   @override
   DisplayTicketConfigData copyWith({
-    String? id,
+    int? id,
     List<Category>? targetCategories,
     bool? targetingAllCategories,
+    int? linker,
     DisplayTicketTermMode? termMode,
     DateTime? designatedDate,
     DisplayTicketPeriod? designatedPeriod,
@@ -93,6 +101,7 @@ class DisplayTicketConfigData extends TicketConfigData {
       targetCategories: targetCategories ?? this.targetCategories,
       targetingAllCategories:
           targetingAllCategories ?? this.targetingAllCategories,
+      linker: linker ?? this.linker,
       termMode: termMode ?? this.termMode,
       designatedDate: designatedDate ?? this.designatedDate,
       designatedPeriod: designatedPeriod ?? this.designatedPeriod,
@@ -170,7 +179,7 @@ class ScheduleTicketConfigData extends TicketConfigData {
 
   @override
   ScheduleTicketConfigData copyWith({
-    String? id,
+    int? id,
     Category? category,
     String? supplement,
     DateTime? registorationDate,
@@ -214,6 +223,7 @@ enum EstimationTicketContentType {
 class EstimationTicketConfigData extends TicketConfigData {
   final List<Category> targetCategories;
   final bool targetingAllCategories;
+  final int? linker;
   final DateTime? _startDate;
   DateTime? get startDate => _startDateDesignated ? _startDate : null;
   final bool _startDateDesignated;
@@ -240,6 +250,7 @@ class EstimationTicketConfigData extends TicketConfigData {
       {super.id,
       this.targetCategories = const <Category>[],
       this.targetingAllCategories = false,
+      this.linker,
       DateTime? startDate,
       bool startDateDesignated = false,
       DateTime? endDate,
@@ -252,9 +263,10 @@ class EstimationTicketConfigData extends TicketConfigData {
 
   @override
   EstimationTicketConfigData copyWith({
-    String? id,
+    int? id,
     List<Category>? selectedCategories,
     bool? selectingAllCategories,
+    int? linker,
     DateTime? startDate,
     bool? startDateDesignated,
     DateTime? endDate,
@@ -265,6 +277,7 @@ class EstimationTicketConfigData extends TicketConfigData {
       id: id ?? this.id,
       targetCategories: selectedCategories ?? targetCategories,
       targetingAllCategories: selectingAllCategories ?? targetingAllCategories,
+      linker: linker ?? this.linker,
       startDate: startDate ?? this.startDate,
       startDateDesignated: startDateDesignated ?? this.startDateDesignated,
       endDate: endDate ?? this.endDate,
@@ -285,6 +298,7 @@ class LogTicketConfigData extends TicketConfigData {
   File? get image => _isImageAttached ? _image : null;
   final bool _isImageAttached;
   bool get isImageAttached => _image != null && _isImageAttached;
+  final bool confirmed;
 
   const LogTicketConfigData(
       {super.id,
@@ -292,6 +306,7 @@ class LogTicketConfigData extends TicketConfigData {
       this.supplement = '',
       this.registorationDate,
       this.amount = 0,
+      this.confirmed = false,
       File? image,
       bool isImageAttached = false})
       : _image = image,
@@ -311,7 +326,7 @@ class LogTicketConfigData extends TicketConfigData {
 
   @override
   LogTicketConfigData copyWith({
-    String? id,
+    int? id,
     Category? category,
     String? supplement,
     DateTime? registorationDate,
@@ -341,38 +356,3 @@ class LogTicketConfigData extends TicketConfigData {
 // </Log Ticket>
 
 // </ticket config data>
-
-class Category {
-  final String id;
-  String name;
-
-  Category({required this.id, required this.name});
-
-  static Future<List<Category>> fetchAll() async {
-    await Future.delayed(const Duration(seconds: 1));
-    return [
-      Category.make('food'),
-      Category.make('hobby'),
-      Category.make('housing')
-    ];
-    // in progress
-  }
-
-  factory Category.make(String name) {
-    return Category(id: const Uuid().v1(), name: name);
-  }
-
-  void rename(String newName) {
-    name = newName;
-  }
-
-  void integrateWith(Category other) {
-    developer.log('integrate $name with ${other.name}');
-    // in progress
-  }
-
-  bool isVaild() {
-    // TODO: implement isVaild
-    return name.isNotEmpty;
-  }
-}

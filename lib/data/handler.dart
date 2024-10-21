@@ -1,6 +1,7 @@
-import 'package:miraibo/data/objects.dart';
+import 'package:miraibo/data/categoryConfig.dart';
 
 import '../page/scheduling_page.dart';
+import './repository.dart';
 
 class TicketDataManager {
   TicketDataManager._internal();

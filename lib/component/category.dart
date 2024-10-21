@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:miraibo/component/general_widget.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import '../data/objects.dart';
+import '../data/repository.dart';
 
 /* 
 In this file, we define the category related components
@@ -66,7 +67,7 @@ class _SingleCategorySelectorState extends State<SingleCategorySelector> {
     super.initState();
     widget.controller._isInitialized = false;
     widget.controller._category = () => selected;
-    optionsFetched = Category.fetchAll();
+    optionsFetched = Categories().fetchAll();
   }
 
   @override
@@ -172,7 +173,7 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
 
   late final Future<void> optionsInitialized;
   Future<void> initializeOptions() async {
-    options = await Category.fetchAll();
+    options = await Categories().fetchAll();
     for (Category category in widget.controller.initiallySelectedCategories) {
       options.remove(category);
     }
@@ -296,7 +297,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
 
   Future<void> initializeMutableList() async {
     mutableListCtl = MutableListFormController<Category>(
-      items: await Category.fetchAll(),
+      items: await Categories().fetchAll(),
       toLabel: (item) => item.name,
     );
   }
@@ -412,6 +413,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
   }
 
   void showCategoryEditorWindow(BuildContext context, Category item) {
+    var textCtl = TextEditingController(text: item.name);
     showDialog(
         context: context,
         builder: (context) {
@@ -420,14 +422,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
             title: const Text('Category Edit'),
             content: Column(mainAxisSize: MainAxisSize.min, children: [
               TextField(
-                controller: TextEditingController(text: item.name),
-                onChanged: (value) {
-                  // on Item Updated, invoke rebuild should be called
-                  if (mutableListCtl.invokeRebuild != null) {
-                    mutableListCtl.invokeRebuild!();
-                  }
-                  item.rename(value);
-                },
+                controller: textCtl,
               ),
               Padding(
                   padding: const EdgeInsets.only(top: 10),
@@ -457,6 +452,10 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
               TextButton(
                   onPressed: () {
                     Navigator.of(context).pop();
+                    if (mutableListCtl.invokeRebuild != null) {
+                      mutableListCtl.invokeRebuild!();
+                    }
+                    item.rename(textCtl.text);
                   },
                   child: const Text('OK')),
             ],

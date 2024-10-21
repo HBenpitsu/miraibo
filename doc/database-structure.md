@@ -1,9 +1,9 @@
 # Local Storage Data Definition
 
-- RECEIPTS
+- LOG_RECORD
   - id ( PRIMAL INT )
   - category ( CATEGORIES/id )
-  - supplement ( NULLABLE TEXT )
+  - supplement ( TEXT )
   - registeredAt ( DATE )
   - amount ( SIGNED INT )
   - image_url ( NULLABLE URL )
@@ -33,13 +33,12 @@
 - DISPLAY_TICKET_TARGET_CATEGORY_MAP
   - id ( PRIMAL INT )
   - target_category_map_linker ( INT )
-  - category_id ( CATEGORIES/id )
+  - category ( CATEGORIES/id )
 
 - SCHEDULES
   - id ( PRIMAL INT )
   - category ( CATEGORIES/id )
   - supplement ( TEXT )
-  - scheduledAt ( DATE )
   - amount ( SIGNED INT )
   - origin_date ( DATE )
   - repeat_type ( ENUM ( no, interval, weekly, monthly, annualy ) )
@@ -62,7 +61,7 @@
     - NULL = all
   - period_option_begin_from ( NULLABLE DATE )
   - period_option_end_at ( NULLABLE DATE )
-  - display_mode ( ENUM
+  - content_type ( ENUM
     - perDay
     - perWeek
     - perMonth
@@ -72,17 +71,13 @@
 - ESTIMATION_TARGET_CATEGORY_MAP
   - id ( PRIMAL INT )
   - target_category_map_linker ( INT )
-  - category_id ( CATEGORIES/id )
-
-- FUTURE_TICKET_FACTORIES
-  - id ( PRIMAL INT )
-  - schedule_id ( NULLABLE SCHEDULES/id )
-  - estimation_id ( NULLABLE ESTIMATIONS/id )
+  - category ( CATEGORIES/id )
 
 - FUTURE_TICKETS
   - id ( PRIMAL INT )
-  - foctory_id ( FUTURE_TICKET_FACTORIES/id )
+  - schedule ( NULLABLE SCHEDULES/id )
+  - estimation ( NULLABLE ESTIMATIONS/id )
   - category ( CATEGORIES/id )
-  - supplement ( NULLABLE TEXT )
+  - supplement ( TEXT )
   - scheduledAt ( DATE )
   - amount ( SIGNED INT )
