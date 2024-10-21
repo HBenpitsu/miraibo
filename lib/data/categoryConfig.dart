@@ -136,6 +136,7 @@ class ScheduleTicketConfigData extends TicketConfigData {
   final Duration repeatInterval;
   final List<DayOfWeek> repeatDayOfWeek;
   final MonthlyRepeatType monthlyRepeatType;
+  final int monthlyRepeatOffset;
   final DateTime? _startDate;
   DateTime? get startDate => _startDateDesignated ? _startDate : null;
   final bool _startDateDesignated;
@@ -156,6 +157,7 @@ class ScheduleTicketConfigData extends TicketConfigData {
     this.repeatInterval = const Duration(days: 1),
     this.repeatDayOfWeek = const [],
     this.monthlyRepeatType = MonthlyRepeatType.fromHead,
+    this.monthlyRepeatOffset = 0,
     DateTime? startDate,
     bool startDateDesignated = false,
     DateTime? endDate,
@@ -188,6 +190,7 @@ class ScheduleTicketConfigData extends TicketConfigData {
     Duration? repeatInterval,
     List<DayOfWeek>? repeatDayOfWeek,
     MonthlyRepeatType? monthlyRepeatType,
+    int? monthlyRepeatOffset,
     DateTime? startDate,
     bool? startDateDesignated,
     DateTime? endDate,
@@ -203,6 +206,7 @@ class ScheduleTicketConfigData extends TicketConfigData {
       repeatInterval: repeatInterval ?? this.repeatInterval,
       repeatDayOfWeek: repeatDayOfWeek ?? this.repeatDayOfWeek,
       monthlyRepeatType: monthlyRepeatType ?? this.monthlyRepeatType,
+      monthlyRepeatOffset: monthlyRepeatOffset ?? this.monthlyRepeatOffset,
       startDate: startDate ?? _startDate,
       startDateDesignated: startDateDesignated ?? _startDateDesignated,
       endDate: endDate ?? _endDate,

@@ -15,6 +15,7 @@ class DatabaseProvider {
   factory DatabaseProvider() => _instance;
 
   Database? _database;
+  bool initialized = false;
 
   Future<void> init() async {
     if (!kIsWeb && (Platform.isLinux || Platform.isWindows)) {
@@ -29,12 +30,16 @@ class DatabaseProvider {
       _database!.execute('PRAGMA foreign_keys=true;'),
       createTables(),
     ]);
+    initialized = true;
   }
 
-  Database get instance {
-    if (_database == null) throw Exception('Database is not opend yet');
-    return _database!;
+  Future<void> ensureInitialized() async {
+    if (initialized) {
+      await init();
+    }
   }
+
+  Database get db => _database!;
 
   final List<Table> tables = [
     LogRecord(),
@@ -81,8 +86,9 @@ abstract class Table<T> {
 
   int dateToInt(DateTime date) =>
       date.millisecondsSinceEpoch ~/ 1000; // convert millisec to sec
-  DateTime intToDate(int dateInt) => DateTime.fromMillisecondsSinceEpoch(
-      dateInt * 1000); // convert sec to millisec
+  DateTime intToDate(int secondsSinceEpoch) =>
+      DateTime.fromMillisecondsSinceEpoch(
+          secondsSinceEpoch * 1000); // convert sec to millisec
 
   void assertPrepared() {
     if (!prepared) throw Exception('Table $tableName is not prepared');
@@ -90,7 +96,7 @@ abstract class Table<T> {
 
   Future<void> prepare();
   Future<void> clear() async {
-    await dbProvider.instance.execute('DELETE FROM $tableName');
+    await dbProvider.db.execute('DELETE FROM $tableName');
   }
 
   Future<T> interpret(Map<String, Object?> row);
@@ -98,16 +104,15 @@ abstract class Table<T> {
   Future<List<T>> fetchAll() async {
     assertPrepared();
     return [
-      for (var row in await dbProvider.instance.query(tableName))
-        await interpret(row)
+      for (var row in await dbProvider.db.query(tableName)) await interpret(row)
     ];
   }
 
   Future<T?> fetchById(int? id) async {
     if (id == null) return null;
     assertPrepared();
-    var result = await dbProvider.instance
-        .query(tableName, where: 'id = ?', whereArgs: [id]);
+    var result =
+        await dbProvider.db.query(tableName, where: 'id = ?', whereArgs: [id]);
     if (result.isEmpty) return null;
     return interpret(result.first);
   }
@@ -127,7 +132,7 @@ mixin Linking<T> on Table<Linker<T>> {
   Future<List<T>> _linkedValues(String linkerFieldName, int linker) async {
     assertPrepared();
     List<T> buf = [];
-    for (var row in await Table.dbProvider.instance
+    for (var row in await Table.dbProvider.db
         .query(tableName, where: '$linkerFieldName = ?', whereArgs: [linker])) {
       var linked = (await interpret(row)).value;
       if (linked != null) {
@@ -137,12 +142,22 @@ mixin Linking<T> on Table<Linker<T>> {
     return buf;
   }
 
-  Future<List<T?>> linkedValues(int linker);
+  Future<List<T>> linkedValues(int linker);
+
+  /// linkerFieldName should be binded by generateNewLinker
+  Future<int> _generateNewLinker(int linkerFieldName) async {
+    assertPrepared();
+    var result = await Table.dbProvider.db
+        .rawQuery('SELECT MAX($linkerFieldName) FROM $tableName');
+    return (result.first.values.first as int?) ?? 0 + 1;
+  }
+
+  Future<int> generateNewLinker();
 }
 
 class LogRecord extends Table<LogTicketConfigData> {
   @override
-  covariant String tableName = 'Receipts';
+  covariant String tableName = 'LogRecord';
 
   @override
   Future<void> prepare() async {
