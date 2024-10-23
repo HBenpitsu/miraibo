@@ -1,6 +1,6 @@
 import './database.dart';
-import 'ticketData.dart';
-import './categoryData.dart';
+import 'ticket_data.dart';
+import 'category_data.dart';
 
 class FutureTicket extends DTO {
   final ScheduleRecord? schedule;

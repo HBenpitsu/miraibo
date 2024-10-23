@@ -1,10 +1,8 @@
 import 'dart:io';
 
-import 'package:miraibo/data/ticketData.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:developer' as developer;
 
 class DatabaseProvider {
   // Singleton

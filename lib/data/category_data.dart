@@ -1,7 +1,5 @@
-import 'package:miraibo/data/ticketData.dart';
+import 'package:miraibo/data/ticket_data.dart';
 import 'database.dart';
-
-import 'dart:developer' as developer;
 
 class Category extends DTO {
   final String name;
