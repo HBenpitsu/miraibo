@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:miraibo/component/general_widget.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../data/category_data.dart';
 

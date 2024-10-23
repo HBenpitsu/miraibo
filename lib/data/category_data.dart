@@ -154,12 +154,11 @@ mixin CategoryLinker<Kv extends DTO, Vv extends DTO>
   @override
   Future<void> replaceCategory(
       Transaction txn, Category replaced, Category replaceWith) async {
-    // TODO: eliminate duplicated valueId
+    // duplication will be eliminated at the point of selection by distinct option.
     await txn.execute('''
     UPDATE $tableName
     SET valueId = ${replaceWith.id}
     WHERE valueId = ${replaced.id};
-    SELECT * FROM $tableName GROUP BY keyId, valueId HAVING COUNT(*) > 1;
     ''');
   }
 }
