@@ -98,6 +98,7 @@ class CategoryTable extends Table<Category> {
     return {'name': data.name};
   }
 
+  /// although super class, [Table], provides delete method, it should not be used directly for this [CategoryTable].
   @override
   Future<int> delete(Category data, Transaction? txn) {
     throw ShouldNotBeCalledException(
