@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:miraibo/component/general_widget.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import '../data/repository.dart';
+import '../data/categoryData.dart';
 
 /* 
 In this file, we define the category related components
@@ -67,7 +67,10 @@ class _SingleCategorySelectorState extends State<SingleCategorySelector> {
     super.initState();
     widget.controller._isInitialized = false;
     widget.controller._category = () => selected;
-    optionsFetched = Categories().fetchAll();
+    optionsFetched = Future(() async {
+      var categoryTable = await CategoryTable.use();
+      return categoryTable.fetchAll();
+    });
   }
 
   @override
@@ -173,7 +176,8 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
 
   late final Future<void> optionsInitialized;
   Future<void> initializeOptions() async {
-    options = await Categories().fetchAll();
+    var categoryTable = await CategoryTable.use();
+    options = await categoryTable.fetchAll();
     for (Category category in widget.controller.initiallySelectedCategories) {
       options.remove(category);
     }
@@ -296,8 +300,9 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
   late final Future<void> categoriesFetched;
 
   Future<void> initializeMutableList() async {
+    var categoryTable = await CategoryTable.use();
     mutableListCtl = MutableListFormController<Category>(
-      items: await Categories().fetchAll(),
+      items: await categoryTable.fetchAll(),
       toLabel: (item) => item.name,
     );
   }
@@ -327,7 +332,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
         controller: textCtl,
         onSubmitted: (value) {
           if (value.isEmpty) return;
-          mutableListCtl.addItem(Category.make(value));
+          mutableListCtl.addItem(Category.saveInFuture(value));
           textCtl.clear();
           // do not lose focus
           focusNode.requestFocus();
@@ -340,7 +345,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
           color: Theme.of(context).colorScheme.primary,
           onPressed: () {
             if (textCtl.text.isEmpty) return;
-            mutableListCtl.addItem(Category.make(textCtl.text));
+            mutableListCtl.addItem(Category.saveInFuture(textCtl.text));
             textCtl.clear();
           },
         ),

@@ -15,8 +15,6 @@
 
 - DISPLAY_TICKETS
   - id ( PRIMAL INT )
-  - target_category_map_linker ( NULLABLE DISPLAY_TICKET_TARGET_CATEGORY_MAP/target_category_map_linker )
-    - NULL = all
   - period_in_days ( NULLABLE INT )
     - NULL = untilToday or untilDesignatedDate
   - limit_date ( NULLABLE DATE )
@@ -29,11 +27,12 @@
       - monthly_quartile_average
       - summation
   - )
+  - linked with multiple CATEGORIES
 
-- DISPLAY_TICKET_TARGET_CATEGORY_MAP
+- DISPLAY_TICKET_TARGET_CATEGORY_LINKER
   - id ( PRIMAL INT )
-  - target_category_map_linker ( INT )
-  - category ( CATEGORIES/id )
+  - keyId ( DISPLAY_TICKETS/id )
+  - valueId ( CATEGORIES/id )
 
 - SCHEDULES
   - id ( PRIMAL INT )
@@ -57,8 +56,6 @@
 
 - ESTIMATIONS
   - id ( PRIMAL INT )
-  - target_category_map_linker ( NULLABLER ESTIMATION_TARGET_CATEGORY_MAP/target_category_map_linker )
-    - NULL = all
   - period_option_begin_from ( NULLABLE DATE )
   - period_option_end_at ( NULLABLE DATE )
   - content_type ( ENUM
@@ -67,11 +64,12 @@
     - perMonth
     - perYear
   - )
+  - linked with multiple CATEGORIES
 
 - ESTIMATION_TARGET_CATEGORY_MAP
   - id ( PRIMAL INT )
-  - target_category_map_linker ( INT )
-  - category ( CATEGORIES/id )
+  - keyId ( ESTIMATIONS/id )
+  - valueId ( CATEGORIES/id )
 
 - FUTURE_TICKETS
   - id ( PRIMAL INT )

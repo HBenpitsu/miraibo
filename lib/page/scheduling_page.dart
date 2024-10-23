@@ -3,12 +3,12 @@ import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:miraibo/data/objects.dart';
 import 'package:miraibo/component/ticket_configurator.dart';
 
 import '../component/motion.dart';
 import '../component/ticket.dart';
 import '../data/handler.dart';
+import '../data/ticketData.dart';
 
 /* 
 SchedulingPage has two screens: MonthlyScreen and DailyScreen
@@ -782,7 +782,7 @@ class TicketContainer extends StatelessWidget {
         for (var ticketConfig
             in await TicketDataManager().fetchTicketConfigsFor(forThisDate))
           switch (ticketConfig) {
-            DisplayTicketConfigData() => DisplayTicket(
+            DisplayRecord() => DisplayTicket(
                 onPressed: () {
                   var controller = DataEditWindowController();
                   showDataEditWindow(
@@ -793,7 +793,7 @@ class TicketContainer extends StatelessWidget {
                           initialConfigData: ticketConfig));
                 },
                 data: ticketConfig),
-            ScheduleTicketConfigData() => ScheduleTicket(
+            ScheduleRecord() => ScheduleTicket(
                 onPressed: () {
                   var controller = DataEditWindowController();
                   showDataEditWindow(
@@ -804,7 +804,7 @@ class TicketContainer extends StatelessWidget {
                           initialConfigData: ticketConfig));
                 },
                 data: ticketConfig),
-            EstimationTicketConfigData() => EstimationTicket(
+            EstimationRecord() => EstimationTicket(
                 onPressed: () {
                   var controller = DataEditWindowController();
                   showDataEditWindow(
@@ -815,7 +815,7 @@ class TicketContainer extends StatelessWidget {
                           initialConfigData: ticketConfig));
                 },
                 data: ticketConfig),
-            LogTicketConfigData() => LogTicket(
+            LogRecord() => LogTicket(
                 onPressed: () {
                   var controller = DataEditWindowController();
                   showDataEditWindow(

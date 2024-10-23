@@ -1,7 +1,7 @@
-import 'package:miraibo/data/categoryConfig.dart';
+import 'package:miraibo/data/ticketData.dart';
 
 import '../page/scheduling_page.dart';
-import './repository.dart';
+import 'categoryData.dart';
 
 class TicketDataManager {
   TicketDataManager._internal();
@@ -11,24 +11,23 @@ class TicketDataManager {
   factory TicketDataManager() => _instance;
 
   /// Returns ticket configs for the given [date].
-  Future<List<TicketConfigData>> fetchTicketConfigsFor(DateTime date) async {
+  Future<List<TicketConfigRecord>> fetchTicketConfigsFor(DateTime date) async {
     return [];
   }
 
-  Future<List<TicketConfigData>> fetchNotableTicketConfigs() async {
+  Future<List<TicketConfigRecord>> fetchNotableTicketConfigs() async {
     return [];
   }
 
-  Future<List<LogTicketConfigData>> fetchLogTicketPresets(int nPresets) async {
+  Future<List<LogRecord>> fetchLogTicketPresets(int nPresets) async {
     return List.generate(
         nPresets,
-        (index) => LogTicketConfigData(
-            category: Category.make('preset $index'),
+        (index) => LogRecord(
+            category: Category(name: 'preset $index'),
             supplement: 'preset $index',
             registorationDate: DateTime.now(),
             amount: 1000,
-            image: null,
-            isImageAttached: false));
+            image: null));
   }
 
   /* 
@@ -47,12 +46,11 @@ class StatisticalAnalyzer {
   static final StatisticalAnalyzer _instance = StatisticalAnalyzer._internal();
   factory StatisticalAnalyzer() => _instance;
 
-  Future<int> calcValueForDisplayTicket(DisplayTicketConfigData data) async {
+  Future<int> calcValueForDisplayTicket(DisplayRecord data) async {
     return 0;
   }
 
-  Future<int> calcValueForEstimationTicket(
-      EstimationTicketConfigData data) async {
+  Future<int> calcValueForEstimationTicket(EstimationRecord data) async {
     return 0;
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:miraibo/data/handler.dart';
-import 'package:miraibo/data/objects.dart';
+import 'package:miraibo/data/ticketData.dart';
 
 /*
 TicketTemplate is a template widget for displaying tickets.
@@ -74,7 +74,7 @@ Some consult data_handler to calculate the value to display.
 */
 class LogTicket extends StatelessWidget {
   final void Function() onPressed;
-  final LogTicketConfigData data;
+  final LogRecord data;
   const LogTicket({super.key, required this.onPressed, required this.data});
 
   @override
@@ -96,7 +96,7 @@ class LogTicket extends StatelessWidget {
 
 class ScheduleTicket extends StatelessWidget {
   final void Function() onPressed;
-  final ScheduleTicketConfigData data;
+  final ScheduleRecord data;
   final bool forSchedule;
   const ScheduleTicket(
       {super.key,
@@ -109,17 +109,17 @@ class ScheduleTicket extends StatelessWidget {
     if (forSchedule) {
       if (data.repeatType != RepeatType.no) {
         label += 'repeated ';
-        if (data.startDateDesignated) {
+        if (data.startDate != null) {
           label +=
               'from ${data.startDate?.year}-${data.startDate?.month}-${data.startDate?.day} ';
         }
-        if (data.endDateDesignated) {
+        if (data.endDate != null) {
           label +=
               'until ${data.endDate?.year}-${data.endDate?.month}-${data.endDate?.day} ';
         }
       } else {
         label +=
-            'scheduled at: ${data.startDate?.year}-${data.startDate?.month}-${data.startDate?.day} ';
+            'scheduled at: ${data.registorationDate?.year}-${data.registorationDate?.month}-${data.registorationDate?.day} ';
       }
     } else {
       label +=
@@ -152,7 +152,7 @@ class ScheduleTicket extends StatelessWidget {
 
 class DisplayTicket extends StatelessWidget {
   final void Function() onPressed;
-  final DisplayTicketConfigData data;
+  final DisplayRecord data;
   const DisplayTicket({super.key, required this.onPressed, required this.data});
 
   List<String> categoryLabel() {
@@ -219,7 +219,7 @@ class DisplayTicket extends StatelessWidget {
 
 class EstimationTicket extends StatelessWidget {
   final void Function() onPressed;
-  final EstimationTicketConfigData data;
+  final EstimationRecord data;
   const EstimationTicket(
       {super.key, required this.onPressed, required this.data});
 
@@ -257,11 +257,10 @@ class EstimationTicket extends StatelessWidget {
 
   List<String> dateLabel(BuildContext context) {
     return [
-      if (!data.startDateDesignated && !data.endDateDesignated)
-        'for all period',
-      if (data.startDateDesignated)
+      if (data.startDate == null && data.endDate == null) 'for all period',
+      if (data.startDate == null)
         'from ${data.startDate?.year}-${data.startDate?.month}-${data.startDate?.day} ',
-      if (data.endDateDesignated)
+      if (data.endDate == null)
         'until ${data.endDate?.year}-${data.endDate?.month}-${data.endDate?.day} ',
     ];
   }

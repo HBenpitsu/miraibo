@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:miraibo/component/category.dart';
 import 'package:miraibo/component/configurator_component.dart';
 import 'package:miraibo/data/handler.dart';
-import '../data/objects.dart';
+import '../data/ticketData.dart';
 import 'general_widget.dart';
 
 // <data edit modal window> a container of a configuration section
@@ -88,7 +88,7 @@ And its initial content is defined by initialConfigData.
 */
 abstract class BasicConfigSectionWidget extends StatefulWidget {
   final DataEditWindowController controller;
-  abstract final TicketConfigData initialConfigData;
+  abstract final TicketConfigRecord initialConfigData;
 
   const BasicConfigSectionWidget({super.key, required this.controller});
 }
@@ -107,8 +107,6 @@ The spacer is used exclusively to make the form scrollable. If the content is ne
 */
 /// [initSubModuleControllers], [onSaved], [contentColumn] should be implemented in the subclass
 mixin ConfigSectionState<T extends BasicConfigSectionWidget> on State<T> {
-  abstract TicketConfigData configData;
-
   /// Titled, Padded part of the form. Expand return value (by `...ret`) and make them children of a Column to conbine multiple sectors.
   List<Widget> sector(BuildContext context, String title, Widget child) {
     return [
@@ -128,10 +126,6 @@ mixin ConfigSectionState<T extends BasicConfigSectionWidget> on State<T> {
     );
   }
 
-  void initConfigData() {
-    configData = widget.initialConfigData;
-  }
-
   void initSubModuleControllers();
 
   // <bind listeners>
@@ -142,7 +136,7 @@ mixin ConfigSectionState<T extends BasicConfigSectionWidget> on State<T> {
 
   void onSaved();
   void onDeleted() {
-    if (configData.id == null) {
+    if (widget.initialConfigData.id == null) {
       // if the configuration is not saved yet, just close the window
       Navigator.of(context).pop();
       return;
@@ -173,7 +167,7 @@ mixin ConfigSectionState<T extends BasicConfigSectionWidget> on State<T> {
                   child: const Text('Cancel')),
               TextButton(
                   onPressed: () {
-                    configData.delete();
+                    widget.initialConfigData.delete();
                     // close the modal bottom sheet at the same time
                     Navigator.of(context).pop();
                     Navigator.of(context).pop();
@@ -188,7 +182,6 @@ mixin ConfigSectionState<T extends BasicConfigSectionWidget> on State<T> {
   @override
   void initState() {
     super.initState();
-    initConfigData();
     initSubModuleControllers();
     bindWindowControllerListeners();
   }
@@ -222,13 +215,13 @@ For more details, such as the options for each field, see the component-structur
 */
 class DisplayTicketConfigSection extends BasicConfigSectionWidget {
   @override
-  final DisplayTicketConfigData initialConfigData;
+  final DisplayRecord initialConfigData;
   final double? width;
 
   const DisplayTicketConfigSection({
     super.key,
     required super.controller,
-    this.initialConfigData = const DisplayTicketConfigData(),
+    this.initialConfigData = const DisplayRecord(),
     this.width,
   });
 
@@ -239,23 +232,25 @@ class DisplayTicketConfigSection extends BasicConfigSectionWidget {
 
 class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
     with ConfigSectionState {
-  @override
-  covariant late DisplayTicketConfigData configData;
   late MultipleCategorySelectorController categorySelectorCtl;
   late DatePickButtonController datePickerCtl;
+  late DisplayTicketContentType contentType;
+  late DisplayTicketTermMode termMode;
+  late DisplayTicketPeriod period;
 
   @override
   void initSubModuleControllers() {
     categorySelectorCtl = MultipleCategorySelectorController(
-      allCategoriesInitiallySelected: configData.targetingAllCategories,
-      initiallySelectedCategories: configData.targetCategories,
+      allCategoriesInitiallySelected:
+          widget.initialConfigData.targetingAllCategories,
+      initiallySelectedCategories: widget.initialConfigData.targetCategories,
     );
     datePickerCtl = DatePickButtonController(
-      initialDate: configData.designatedDate,
+      initialDate: widget.initialConfigData.designatedDate ?? DateTime.now(),
     );
-    // there's no controller for content type
-    // there's no controller for term mode
-    // there's no controller for period
+    contentType = widget.initialConfigData.contentType;
+    termMode = widget.initialConfigData.termMode;
+    period = widget.initialConfigData.designatedPeriod;
   }
 
   @override
@@ -266,16 +261,20 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
           'Category selector is not prepared yet. Please wait until it is loaded.');
       return;
     }
-    configData = configData.copyWith(
-        targetCategories: categorySelectorCtl.selectedCategories,
-        targetingAllCategories: categorySelectorCtl.allCategoriesSelected,
-        designatedDate: datePickerCtl.selected);
-    if (!configData.targetingAllCategories &&
-        configData.targetCategories.isEmpty) {
+    if (categorySelectorCtl.allCategoriesSelected &&
+        categorySelectorCtl.selectedCategories.isEmpty) {
       showErrorDialog(
           context, 'Category unselected. Please select at least one category.');
       return;
     }
+    var configData = DisplayRecord(
+      targetCategories: categorySelectorCtl.selectedCategories,
+      targetingAllCategories: categorySelectorCtl.allCategoriesSelected,
+      termMode: termMode,
+      designatedDate: datePickerCtl.selected,
+      designatedPeriod: period,
+      contentType: contentType,
+    );
     configData.save();
     Navigator.of(context).pop();
   }
@@ -288,7 +287,7 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
         'Period',
         // there is no controller which returns the value of the selected item as 'DisplayTicketPeriod'
         DropdownMenu<DisplayTicketPeriod>(
-          initialSelection: configData.designatedPeriod,
+          initialSelection: period,
           dropdownMenuEntries: const [
             DropdownMenuEntry(value: DisplayTicketPeriod.week, label: 'week'),
             DropdownMenuEntry(value: DisplayTicketPeriod.month, label: 'month'),
@@ -298,28 +297,25 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
           ],
           onSelected: (value) {
             if (value != null) {
-              configData = configData.copyWith(designatedPeriod: value);
+              period = value;
             }
           },
         ));
   }
 
   List<Widget> dateSelectionCalenderForm(BuildContext context) {
-    configData = configData.copyWith(
-        designatedDate: configData.designatedDate ?? DateTime.now());
     return sector(context, 'Until', DatePickButton(controller: datePickerCtl));
   }
 
   List<Widget> contentTypeSelector(BuildContext context, {bool fixed = false}) {
     if (fixed) {
       // for fixed situation, only summation is available
-      configData =
-          configData.copyWith(contentType: DisplayTicketContentType.summation);
+      contentType = DisplayTicketContentType.summation;
       return sector(
           context,
           'Content Type',
           DropdownMenu<DisplayTicketContentType>(
-            initialSelection: configData.contentType,
+            initialSelection: contentType,
             dropdownMenuEntries: const [
               DropdownMenuEntry(
                   value: DisplayTicketContentType.summation,
@@ -332,7 +328,7 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
           'Content Type',
           // there is no controller which returns the value of the selected item as 'DisplayTicketContentTypes'
           DropdownMenu<DisplayTicketContentType>(
-            initialSelection: configData.contentType,
+            initialSelection: contentType,
             dropdownMenuEntries: const [
               DropdownMenuEntry(
                   value: DisplayTicketContentType.dailyAverage,
@@ -352,7 +348,7 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
             ],
             onSelected: (value) {
               if (value != null) {
-                configData = configData.copyWith(contentType: value);
+                contentType = value;
               }
             },
           ));
@@ -365,7 +361,7 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
         'Term-mode',
         // there is no controller which returns the value of the selected item as 'DisplayTicketTermMode'
         DropdownMenu<DisplayTicketTermMode>(
-          initialSelection: configData.termMode,
+          initialSelection: termMode,
           dropdownMenuEntries: const [
             DropdownMenuEntry(
                 value: DisplayTicketTermMode.untilToday, label: 'until today'),
@@ -379,7 +375,7 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
           onSelected: (value) {
             if (value != null) {
               setState(() {
-                configData = configData.copyWith(termMode: value);
+                termMode = value;
               });
             }
           },
@@ -404,7 +400,7 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
       ...targetCategories(context),
       ...termModeSelector(context),
       // Term mode dependencies
-      ...switch (configData.termMode) {
+      ...switch (termMode) {
         DisplayTicketTermMode.untilDesignatedDate => [
             ...dateSelectionCalenderForm(context),
             ...contentTypeSelector(context, fixed: true),
@@ -440,11 +436,11 @@ For more details, such as the options for each field, see the component-structur
 */
 class ScheduleTicketConfigSection extends BasicConfigSectionWidget {
   @override
-  final ScheduleTicketConfigData initialConfigData;
+  final ScheduleRecord initialConfigData;
   const ScheduleTicketConfigSection({
     super.key,
     required super.controller,
-    this.initialConfigData = const ScheduleTicketConfigData(),
+    this.initialConfigData = const ScheduleRecord(),
   });
 
   @override
@@ -454,8 +450,6 @@ class ScheduleTicketConfigSection extends BasicConfigSectionWidget {
 
 class _ScheduleTicketConfiguraitonSectionState
     extends State<ScheduleTicketConfigSection> with ConfigSectionState {
-  @override
-  covariant late ScheduleTicketConfigData configData;
   late SingleCategorySelectorController categorySelectorCtl;
   late TextEditingController supplementCtl;
   late MoneyformController moneyFormCtl;
@@ -465,20 +459,21 @@ class _ScheduleTicketConfiguraitonSectionState
   @override
   void initSubModuleControllers() {
     categorySelectorCtl = SingleCategorySelectorController(
-      initiallySelectedCategory: configData.category,
+      initiallySelectedCategory: widget.initialConfigData.category,
     );
-    supplementCtl = TextEditingController(text: configData.supplement);
-    moneyFormCtl = MoneyformController(amount: configData.amount);
+    supplementCtl =
+        TextEditingController(text: widget.initialConfigData.supplement);
+    moneyFormCtl = MoneyformController(amount: widget.initialConfigData.amount);
     registorationDateCtl = DatePickButtonController(
-      initialDate: configData.registorationDate,
+      initialDate: widget.initialConfigData.registorationDate ?? DateTime.now(),
     );
     repeatSettingCtl = ScheduleTicketRepeatSettingSectorController(
-      initialRepeatType: configData.repeatType,
-      initialRepeatInterval: configData.repeatInterval,
-      initialRepeatDayOfWeek: configData.repeatDayOfWeek,
-      initialMonthlyRepeatType: configData.monthlyRepeatType,
-      initialStartDate: configData.startDate,
-      initialEndDate: configData.endDate,
+      initialRepeatType: widget.initialConfigData.repeatType,
+      initialRepeatInterval: widget.initialConfigData.repeatInterval,
+      initialRepeatDayOfWeek: widget.initialConfigData.repeatDayOfWeek,
+      initialMonthlyRepeatType: widget.initialConfigData.monthlyRepeatType,
+      initialStartDate: widget.initialConfigData.startDate,
+      initialEndDate: widget.initialConfigData.endDate,
     );
   }
 
@@ -489,25 +484,27 @@ class _ScheduleTicketConfiguraitonSectionState
           'Category selector is not prepared yet. Please wait until it is loaded.');
       return;
     }
-    configData = configData.copyWith(
-      category: categorySelectorCtl.selected,
-      supplement: supplementCtl.text,
-      amount: moneyFormCtl.amount,
-      registorationDate: registorationDateCtl.selected,
-      repeatType: repeatSettingCtl.repeatType,
-      repeatInterval: repeatSettingCtl.repeatInterval,
-      repeatDayOfWeek: repeatSettingCtl.repeatDayOfWeek,
-      monthlyRepeatType: repeatSettingCtl.monthlyRepeatType,
-      startDate: repeatSettingCtl.startDate,
-      startDateDesignated: repeatSettingCtl.startDate != null,
-      endDate: repeatSettingCtl.endDate,
-      endDateDesignated: repeatSettingCtl.endDate != null,
-    );
-    if (configData.category == null) {
+    if (categorySelectorCtl.selected == null) {
       showErrorDialog(
           context, 'Category unselected. Please select a category.');
       return;
     }
+    var configData = ScheduleRecord(
+      category: categorySelectorCtl.selected!,
+      supplement: supplementCtl.text,
+      registorationDate: registorationDateCtl.selected,
+      amount: moneyFormCtl.amount,
+      repeatType: repeatSettingCtl.repeatType,
+      repeatInterval: repeatSettingCtl.repeatInterval,
+      repeatDayOfWeek: repeatSettingCtl.repeatDayOfWeek,
+      monthlyRepeatType: repeatSettingCtl.monthlyRepeatType,
+      monthlyRepeatOffset: registorationDateCtl.selected == null
+          ? 0
+          : repeatSettingCtl
+              .monthlyRepeatOffset(registorationDateCtl.selected!),
+      startDate: repeatSettingCtl.startDate,
+      endDate: repeatSettingCtl.endDate,
+    );
     configData.save();
     Navigator.of(context).pop();
   }
@@ -650,6 +647,16 @@ class ScheduleTicketRepeatSettingSectorController {
   void setEndDate() {
     _endDate = null;
     _onChanged();
+  }
+
+  int monthlyRepeatOffset(DateTime date) {
+    switch (_monthlyRepeatType) {
+      case MonthlyRepeatType.fromHead:
+        return date.day - 1;
+      case MonthlyRepeatType.fromTail:
+        var lastDayInMonth = DateTime(date.year, date.month + 1, 0);
+        return lastDayInMonth.day - date.day;
+    }
   }
 
   void Function()? onChanged;
@@ -902,11 +909,11 @@ For more details, such as the options for each field, see the component-structur
 */
 class EstimationTicketConfigSection extends BasicConfigSectionWidget {
   @override
-  final EstimationTicketConfigData initialConfigData;
+  final EstimationRecord initialConfigData;
   const EstimationTicketConfigSection({
     super.key,
     required super.controller,
-    this.initialConfigData = const EstimationTicketConfigData(),
+    this.initialConfigData = const EstimationRecord(),
   });
 
   @override
@@ -916,22 +923,22 @@ class EstimationTicketConfigSection extends BasicConfigSectionWidget {
 
 class _EstimationTicketConfiguraitonSectionState
     extends State<EstimationTicketConfigSection> with ConfigSectionState {
-  @override
-  covariant late EstimationTicketConfigData configData;
   late MultipleCategorySelectorController categoryCtl;
   late UnlimitedPeriodSelectorController periodCtl;
+  late EstimationTicketContentType contentType;
 
   @override
   void initSubModuleControllers() {
     categoryCtl = MultipleCategorySelectorController(
-      allCategoriesInitiallySelected: configData.targetingAllCategories,
-      initiallySelectedCategories: configData.targetCategories,
+      allCategoriesInitiallySelected:
+          widget.initialConfigData.targetingAllCategories,
+      initiallySelectedCategories: widget.initialConfigData.targetCategories,
     );
     periodCtl = UnlimitedPeriodSelectorController(
-      start: configData.startDate,
-      end: configData.endDate,
+      start: widget.initialConfigData.startDate,
+      end: widget.initialConfigData.endDate,
     );
-    // there's no controller for content type
+    contentType = widget.initialConfigData.contentType;
   }
 
   @override
@@ -941,20 +948,19 @@ class _EstimationTicketConfiguraitonSectionState
           'Category selector is not prepared yet. Please wait until it is loaded.');
       return;
     }
-    configData = configData.copyWith(
-      selectingAllCategories: categoryCtl.allCategoriesSelected,
-      selectedCategories: categoryCtl.selectedCategories,
-      startDate: periodCtl.start,
-      startDateDesignated: periodCtl.start != null,
-      endDate: periodCtl.end,
-      endDateDesignated: periodCtl.end != null,
-    );
-    if (!configData.targetingAllCategories &&
-        configData.targetCategories.isEmpty) {
+    if (!categoryCtl.allCategoriesInitiallySelected &&
+        categoryCtl.selectedCategories.isEmpty) {
       showErrorDialog(
           context, 'Category unselected. Please select at least one category.');
       return;
     }
+    var configData = EstimationRecord(
+      targetCategories: categoryCtl.selectedCategories,
+      targetingAllCategories: categoryCtl.allCategoriesSelected,
+      startDate: periodCtl.start,
+      endDate: periodCtl.end,
+      contentType: contentType,
+    );
     configData.save();
     Navigator.of(context).pop();
   }
@@ -972,7 +978,7 @@ class _EstimationTicketConfiguraitonSectionState
         context,
         'Content Type',
         DropdownMenu<EstimationTicketContentType>(
-          initialSelection: configData.contentType,
+          initialSelection: contentType,
           dropdownMenuEntries: const [
             DropdownMenuEntry(
                 value: EstimationTicketContentType.perDay,
@@ -989,9 +995,7 @@ class _EstimationTicketConfiguraitonSectionState
           ],
           onSelected: (value) {
             if (value != null) {
-              setState(() {
-                configData = configData.copyWith(contentType: value);
-              });
+              contentType = value;
             }
           },
         ));
@@ -1035,11 +1039,11 @@ For more details, such as the options for each field, see the component-structur
 */
 class LogTicketConfiguraitonSection extends BasicConfigSectionWidget {
   @override
-  final LogTicketConfigData initialConfigData;
+  final LogRecord initialConfigData;
   const LogTicketConfiguraitonSection({
     super.key,
     required super.controller,
-    this.initialConfigData = const LogTicketConfigData(),
+    this.initialConfigData = const LogRecord(),
   });
 
   @override
@@ -1049,8 +1053,6 @@ class LogTicketConfiguraitonSection extends BasicConfigSectionWidget {
 
 class _LogTicketConfiguraitonSectionState
     extends State<LogTicketConfiguraitonSection> with ConfigSectionState {
-  @override
-  covariant late LogTicketConfigData configData;
   late SingleCategorySelectorController categorySelectorCtl;
   late TextEditingController supplementationCtl;
   late DatePickButtonController registorationDateCtl;
@@ -1060,13 +1062,14 @@ class _LogTicketConfiguraitonSectionState
   @override
   void initSubModuleControllers() {
     categorySelectorCtl = SingleCategorySelectorController(
-      initiallySelectedCategory: configData.category,
+      initiallySelectedCategory: widget.initialConfigData.category,
     );
-    supplementationCtl = TextEditingController(text: configData.supplement);
+    supplementationCtl =
+        TextEditingController(text: widget.initialConfigData.supplement);
     registorationDateCtl = DatePickButtonController(
-      initialDate: configData.registorationDate,
+      initialDate: widget.initialConfigData.registorationDate,
     );
-    amountCtl = MoneyformController(amount: configData.amount);
+    amountCtl = MoneyformController(amount: widget.initialConfigData.amount);
     pictureSelectorCtl = PictureSelectorController();
   }
 
@@ -1078,19 +1081,20 @@ class _LogTicketConfiguraitonSectionState
           'Category selector is not prepared yet. Please wait until it is loaded.');
       return;
     }
-    configData = configData.copyWith(
-      category: categorySelectorCtl.selected,
-      supplement: supplementationCtl.text,
-      registorationDate: registorationDateCtl.selected,
-      amount: amountCtl.amount,
-      image: pictureSelectorCtl.picture,
-      isImageAttached: pictureSelectorCtl.picture != null,
-    );
-    if (configData.category == null) {
+    if (categorySelectorCtl.selected == null) {
       showErrorDialog(
           context, 'Category unselected. Please select a category.');
       return;
     }
+    var configData = LogRecord(
+      category: categorySelectorCtl.selected!,
+      supplement: supplementationCtl.text,
+      registorationDate: registorationDateCtl.selected,
+      amount: amountCtl.amount,
+      image: pictureSelectorCtl.picture,
+      // do not change 'confirmed' field in this section
+      confirmed: widget.initialConfigData.confirmed,
+    );
     configData.save();
     Navigator.of(context).pop();
   }
@@ -1169,12 +1173,12 @@ The essential log for presetting is implemented in `data_fetcher.dart` (not here
 */
 class LogTicketConfigurationSectionWithPreset extends StatefulWidget {
   final DataEditWindowController controller;
-  final LogTicketConfigData initialConfigData;
+  final LogRecord initialConfigData;
 
   const LogTicketConfigurationSectionWithPreset(
       {super.key,
       required this.controller,
-      this.initialConfigData = const LogTicketConfigData()});
+      this.initialConfigData = const LogRecord()});
 
   @override
   State<LogTicketConfigurationSectionWithPreset> createState() =>
@@ -1184,9 +1188,9 @@ class LogTicketConfigurationSectionWithPreset extends StatefulWidget {
 class _LogTicketConfigurationSectionWithPresetState
     extends State<LogTicketConfigurationSectionWithPreset> {
   DataEditWindowController sectionCtl = DataEditWindowController();
-  late LogTicketConfigData logTicketConfigData;
+  late LogRecord logTicketConfigData;
   static const int nPreset = 5;
-  late Future<List<LogTicketConfigData>> fPresets;
+  late Future<List<LogRecord>> fPresets;
 
   @override
   void initState() {
@@ -1203,7 +1207,7 @@ class _LogTicketConfigurationSectionWithPresetState
     fPresets = TicketDataManager().fetchLogTicketPresets(nPreset);
   }
 
-  void applyPreset(LogTicketConfigData data) {
+  void applyPreset(LogRecord data) {
     setState(() {
       logTicketConfigData = logTicketConfigData.applyPreset(data);
     });
@@ -1283,14 +1287,14 @@ class _TicketCreationSectionState extends State<TicketCreationSection>
   TabController? tabController;
 
   DataEditWindowController displayTicketConfigCtl = DataEditWindowController();
-  late DisplayTicketConfigData initialDisplayTicketConfigData;
+  late DisplayRecord initialDisplayTicketConfigData;
   DataEditWindowController scheduleTicketConfigCtl = DataEditWindowController();
-  late ScheduleTicketConfigData initialScheduleTicketConfigData;
+  late ScheduleRecord initialScheduleTicketConfigData;
   DataEditWindowController estimationTicketConfigCtl =
       DataEditWindowController();
-  late EstimationTicketConfigData initialEstimationTicketConfigData;
+  late EstimationRecord initialEstimationTicketConfigData;
   DataEditWindowController logTicketConfigCtl = DataEditWindowController();
-  late LogTicketConfigData initialLogTicketConfigData;
+  late LogRecord initialLogTicketConfigData;
 
   @override
   void initState() {
@@ -1317,16 +1321,16 @@ class _TicketCreationSectionState extends State<TicketCreationSection>
       // just close the window
       Navigator.of(context).pop();
     });
-    initialDisplayTicketConfigData = DisplayTicketConfigData(
+    initialDisplayTicketConfigData = DisplayRecord(
       designatedDate: widget.initialDate,
     );
-    initialScheduleTicketConfigData = ScheduleTicketConfigData(
+    initialScheduleTicketConfigData = ScheduleRecord(
       registorationDate: widget.initialDate,
     );
-    initialEstimationTicketConfigData = EstimationTicketConfigData(
+    initialEstimationTicketConfigData = EstimationRecord(
       startDate: widget.initialDate,
     );
-    initialLogTicketConfigData = LogTicketConfigData(
+    initialLogTicketConfigData = LogRecord(
       registorationDate: widget.initialDate,
     );
   }
