@@ -288,6 +288,7 @@ mixin Linker<Kv extends DTO, Vv extends DTO> on Table<Link> {
       // It is trade-off between performance and maintainability. (I chose maintainability)
       List<int> valueIds = [
         for (var row in await txn.query(tableName,
+            // eliminate duplicates
             distinct: true,
             columns: ['valueId'],
             where: 'keyId = ?',
