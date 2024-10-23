@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:miraibo/component/category.dart';
 import 'package:miraibo/component/configurator_component.dart';
 import 'package:miraibo/data/handler.dart';
-import '../data/ticketData.dart';
+import '../data/ticket_data.dart';
 import 'general_widget.dart';
 
 // <data edit modal window> a container of a configuration section

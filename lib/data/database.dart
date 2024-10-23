@@ -68,6 +68,7 @@ abstract class DTO {
 /// ```
 ///
 abstract class Table<T extends DTO> {
+  // <initialization>
   abstract String tableName;
   static final DatabaseProvider dbProvider = DatabaseProvider();
 
@@ -82,7 +83,9 @@ abstract class Table<T extends DTO> {
       prepared = true;
     }
   }
+  // </initialization>
 
+  // <SQL generator>
   /// returns SQL query to create table
   String makeTable(List<String> fields) =>
       '''CREATE TABLE IF NOT EXISTS '$tableName'(
@@ -111,7 +114,9 @@ abstract class Table<T extends DTO> {
   String makeLinkerField(Linker linkerTable, {bool notNull = false}) => '';
   String makeEnumField(String name, List<Enum> values) =>
       "'$name' TEXT NOT NULL, CHECK (0 <= $name <= ${values.length})";
+  // </SQL generator>
 
+  // <(de)serializer>
   int? dateToInt(DateTime? date) => date == null
       ? null
       : date.millisecondsSinceEpoch ~/ 1000; // convert millisec to sec
@@ -119,92 +124,137 @@ abstract class Table<T extends DTO> {
       ? null
       : DateTime.fromMillisecondsSinceEpoch(
           secondsSinceEpoch * 1000); // convert sec to millisec
+  // </(de)serializer>
 
+  // <operations>
   Future<void> clear() async {
     await dbProvider.db.execute('DELETE FROM $tableName');
   }
 
-  Future<T> interpret(Map<String, Object?> row);
+  Future<T> interpret(Map<String, Object?> row, Transaction? txn);
 
   /// throws an exception if the data is invalid
   void validate(T data);
+
+  /// do not include id field
   Map<String, Object?> serialize(T data);
 
-  /// If there is linkerField(s), override this method to update linkerTable.
-  /// [id] is specified when the record is newly inserted.
-  Future<void> link(T data, {int? id}) async {}
+  /// If there is some table that should be modified when the record is inserted or updated (such as LinkerTable), override this method.
+  /// [id] is specified when the record is newly inserted. Otherwise (on update), [id] is null. Instead, [data] contains the id.
+  Future<void> link(Transaction txn, T data, {int? id}) async {}
 
-  /// If there is linkerField(s) or linked by some table, override this method to update linkerTable.
-  Future<void> unlink(T data) async {}
+  /// If there is some table that should be modified when the record is deleted (such as LinkerTable), override this method.
+  Future<void> unlink(Transaction txn, T data) async {}
 
-  Future<List<T>> fetchAll() async {
+  Future<List<T>> fetchAll(Transaction? txn) async {
     await ensureAvailability();
-    return [
-      for (var row in await dbProvider.db.query(tableName)) await interpret(row)
-    ];
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return fetchAll(txn);
+      });
+    } else {
+      return [
+        for (var row in await txn.query(tableName)) await interpret(row, txn)
+      ];
+    }
   }
 
-  Future<T?> fetchById(int? id) async {
+  Future<T?> fetchById(int? id, Transaction? txn) async {
+    await ensureAvailability();
     if (id == null) return null;
-    await ensureAvailability();
-    var result =
-        await dbProvider.db.query(tableName, where: 'id = ?', whereArgs: [id]);
-    if (result.isEmpty) return null;
-    return interpret(result.first);
-  }
-
-  Future<List<T>> fetchByIds(List<int> ids) async {
-    await ensureAvailability();
-    return [
-      for (var row in await dbProvider.db
-          .query(tableName, where: 'id IN (${ids.join(', ')})'))
-        await interpret(row)
-    ];
-  }
-
-  Future<int> insert(T data) async {
-    await ensureAvailability();
-    validate(data);
-    if (data.id != null) {
-      throw Exception('tried to insert data with id');
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return fetchById(id, txn);
+      });
+    } else {
+      var result = await txn.query(tableName, where: 'id = ?', whereArgs: [id]);
+      if (result.isEmpty) return null;
+      return interpret(result.first, txn);
     }
-    return await dbProvider.db.transaction((txn) async {
+  }
+
+  Future<List<T>> fetchByIds(List<int> ids, Transaction? txn) async {
+    await ensureAvailability();
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return fetchByIds(ids, txn);
+      });
+    } else {
+      return [
+        for (var row
+            in await txn.query(tableName, where: 'id IN (${ids.join(', ')})'))
+          await interpret(row, txn)
+      ];
+    }
+  }
+
+  Future<int> insert(T data, Transaction? txn) async {
+    await ensureAvailability();
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return insert(data, txn);
+      });
+    } else {
+      validate(data);
+      if (data.id != null) {
+        throw IlligalUsageException('tried to insert data with id');
+      }
       var id = await txn.insert(tableName, serialize(data));
-      await link(data, id: id);
+      await link(txn, data, id: id);
       return id;
-    });
-  }
-
-  Future<int> update(T data) async {
-    await ensureAvailability();
-    validate(data);
-    if (data.id == null) {
-      throw Exception('tried to update data without id');
     }
-    return await dbProvider.db.transaction((txn) async {
-      var id = await dbProvider.db.update(tableName, serialize(data),
-          where: 'id = ?', whereArgs: [data.id]);
-      await link(data);
-      return id;
-    });
   }
 
-  Future<int> delete(T data) async {
+  Future<int> update(T data, Transaction? txn) async {
     await ensureAvailability();
-    return await dbProvider.db.transaction((txn) async {
-      var id = await dbProvider.db
-          .delete(tableName, where: 'id = ?', whereArgs: [data.id]);
-      await unlink(data);
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return update(data, txn);
+      });
+    } else {
+      validate(data);
+      if (data.id == null) {
+        throw IlligalUsageException('tried to update data without id');
+      }
+      var id = await txn.update(tableName, serialize(data),
+          where: 'id = ?', whereArgs: [data.id]);
+      await link(txn, data);
       return id;
-    });
+    }
+  }
+
+  Future<int> delete(T data, Transaction? txn) async {
+    await ensureAvailability();
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return delete(data, txn);
+      });
+    } else {
+      validate(data);
+      if (data.id == null) {
+        throw IlligalUsageException('tried to delete data without id');
+      }
+      var id =
+          await txn.delete(tableName, where: 'id = ?', whereArgs: [data.id]);
+      await unlink(txn, data);
+      return id;
+    }
   }
 
   Future<int> save(T data) async {
     if (data.id == null) {
-      return await insert(data);
+      return insert(data, null);
     } else {
-      return await update(data);
+      return update(data, null);
     }
+  }
+  // </operations>
+
+  // <helper/>
+  Future<void> query(
+      Future<void> Function(Transaction txn, String tableName) query) async {
+    await ensureAvailability();
+    await dbProvider.db.transaction((txn) => query(txn, tableName));
   }
 }
 
@@ -216,39 +266,56 @@ class Link extends DTO {
 
   @override
   Future<void> save() async {
-    throw UnimplementedError();
+    throw ShouldNotBeCalledException('Link should not be saved directly');
   }
 
   @override
   Future<void> delete() async {
-    throw UnimplementedError();
+    throw ShouldNotBeCalledException('Link should not be deleted directly');
   }
 }
 
 mixin Linker<Kv extends DTO, Vv extends DTO> on Table<Link> {
-  Future<List<Vv>> fetchValues(int keyId) async {
+  Future<List<Vv>> fetchValues(int keyId, Transaction? txn) async {
     await ensureAvailability();
-    List<int> valueIds = [
-      for (var row in await Table.dbProvider.db
-          .query(tableName, where: 'keyId = ?', whereArgs: [keyId]))
-        row['valueId'] as int
-    ];
-    return await fetchValuesByIds(valueIds);
+    if (txn == null) {
+      return Table.dbProvider.db.transaction((txn) async {
+        return fetchValues(keyId, txn);
+      });
+    } else {
+      // In terms of performance, it is better to use a single query to fetch all values. (instead of calling [fetchValuesByIds])
+      // However, it is not possible to know what table should be queried for abstract [Linker]-mixin.
+      // It is trade-off between performance and maintainability. (I chose maintainability)
+      List<int> valueIds = [
+        for (var row in await txn.query(tableName,
+            distinct: true,
+            columns: ['valueId'],
+            where: 'keyId = ?',
+            whereArgs: [keyId]))
+          row['valueId'] as int
+      ];
+      return fetchValuesByIds(valueIds, txn);
+    }
   }
 
   /// Wrapper of [fetchByIds] of `Table<Vv>`
-  Future<List<Vv>> fetchValuesByIds(List<int> valueIds);
+  Future<List<Vv>> fetchValuesByIds(List<int> valueIds, Transaction? txn);
 
-  Future<void> linkValues(int keyId, List<Vv> values) async {
+  Future<void> linkValues(int keyId, List<Vv> values, Transaction? txn) async {
     await ensureAvailability();
-    await Table.dbProvider.db.transaction((txn) async {
+    if (txn == null) {
+      // if transaction is not provided, create a new one and use it.
+      await Table.dbProvider.db.transaction((txn) async {
+        await linkValues(keyId, values, txn);
+      });
+    } else {
       await txn.delete(tableName, where: 'keyId = ?', whereArgs: [keyId]);
       if (values.isEmpty) return;
-      await txn.rawInsert('''
+      await txn.execute('''
         INSERT INTO $tableName (keyId, valueId)
-        VALUES ${values.map((val) => val.id == null ? '' : '($keyId, ${val.id})').join(', ')}
+        VALUES ${values.map((val) => val.id == null ? '' : '($keyId, ${val.id})').join(', ')};
       ''');
-    });
+    }
   }
 
   Table<Kv> get keyTable;
@@ -269,14 +336,13 @@ mixin Linker<Kv extends DTO, Vv extends DTO> on Table<Link> {
   @override
   Map<String, Object?> serialize(Link data) {
     return {
-      'id': data.id,
       'key': data.keyId,
       'value': data.valueId,
     };
   }
 
   @override
-  Future<Link> interpret(Map<String, Object?> row) async {
+  Future<Link> interpret(Map<String, Object?> row, Transaction? txn) async {
     return Link(
         id: row['id'] as int,
         keyId: row['key'] as int,
@@ -293,4 +359,26 @@ class ShouldNotBeCalledException implements Exception {
   @override
   String toString() => message;
 }
+
+class InvalidDataException implements Exception {
+  final String message;
+  const InvalidDataException(this.message);
+  @override
+  String toString() => message;
+}
+
+class IlligalUsageException implements Exception {
+  final String message;
+  const IlligalUsageException(this.message);
+  @override
+  String toString() => message;
+}
 // </user exception>
+
+// <helper>
+Future<void> useTables(
+    List<Table> tables, Future<void> Function(Database db) query) async {
+  await Future.wait(tables.map((table) => table.ensureAvailability()));
+  await query(DatabaseProvider().db);
+}
+// </helper>

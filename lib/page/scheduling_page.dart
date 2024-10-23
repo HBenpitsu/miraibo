@@ -8,7 +8,7 @@ import 'package:miraibo/component/ticket_configurator.dart';
 import '../component/motion.dart';
 import '../component/ticket.dart';
 import '../data/handler.dart';
-import '../data/ticketData.dart';
+import '../data/ticket_data.dart';
 
 /* 
 SchedulingPage has two screens: MonthlyScreen and DailyScreen

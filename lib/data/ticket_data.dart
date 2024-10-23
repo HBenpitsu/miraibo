@@ -1,8 +1,11 @@
 import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
 import 'category_data.dart';
 import './database.dart';
+import './future_ticket_data.dart';
 
 /* 
 This file contains the data classes that define the structure of the data / repository of the data, 
@@ -143,31 +146,32 @@ class DisplayTicketTable extends Table<DisplayRecord> {
 
   // <linking handler>
   @override
-  Future<void> link(DisplayRecord data, {int? id}) async {
+  Future<void> link(Transaction txn, DisplayRecord data, {int? id}) async {
     var linker = await DisplayTicketTargetCategoryLinker.use();
     id ??= data.id;
     if (id == null) {
-      throw Exception('Tried to link with null id');
+      throw IlligalUsageException('Tried to link with null id');
     }
     if (data.targetingAllCategories) {
-      await linker.linkValues(id, const []);
+      await linker.linkValues(id, const [], txn);
     } else {
-      await linker.linkValues(id, data.targetCategories);
+      await linker.linkValues(id, data.targetCategories, txn);
     }
   }
 
   @override
-  Future<void> unlink(DisplayRecord data) async {
+  Future<void> unlink(Transaction txn, DisplayRecord data) async {
     var linker = await DisplayTicketTargetCategoryLinker.use();
     if (data.id == null) {
-      throw Exception('Tried to unlink with null id');
+      throw IlligalUsageException('Tried to unlink with null id');
     }
-    await linker.linkValues(data.id!, const []);
+    await linker.linkValues(data.id!, const [], txn);
   }
   // </linking handler>
 
   @override
-  Future<DisplayRecord> interpret(Map<String, Object?> row) async {
+  Future<DisplayRecord> interpret(
+      Map<String, Object?> row, Transaction? txn) async {
     int? periodInDays = row['period_in_days'] as int?;
     int? limitDate = row['limit_date'] as int?;
 
@@ -179,13 +183,13 @@ class DisplayTicketTable extends Table<DisplayRecord> {
     } else if (periodInDays == null && limitDate != null) {
       termMode = DisplayTicketTermMode.untilDesignatedDate;
     } else {
-      throw Exception('Both period_in_days and limit_date are set');
+      throw InvalidDataException('Both period_in_days and limit_date are set');
     }
 
     var id = row['id'] as int;
 
     var linker = await DisplayTicketTargetCategoryLinker.use();
-    var targetCategories = await linker.fetchValues(id);
+    var targetCategories = await linker.fetchValues(id, txn);
 
     return DisplayRecord(
       id: id,
@@ -206,7 +210,7 @@ class DisplayTicketTable extends Table<DisplayRecord> {
         break;
       case DisplayTicketTermMode.untilDesignatedDate:
         if (data.designatedDate == null) {
-          throw Exception(
+          throw InvalidDataException(
               'designatedDate is null although termMode is [DisplayTicketTermMode.untilDesignatedDate]');
         }
         break;
@@ -216,7 +220,6 @@ class DisplayTicketTable extends Table<DisplayRecord> {
   @override
   Map<String, Object?> serialize(DisplayRecord data) {
     return {
-      'id': data.id,
       'period_in_days':
           data.termMode == DisplayTicketTermMode.lastDesignatedPeriod
               ? daysFromPeriodExpression(data.designatedPeriod)
@@ -228,9 +231,9 @@ class DisplayTicketTable extends Table<DisplayRecord> {
 }
 
 class DisplayTicketTargetCategoryLinker extends Table<Link>
-    with Linker<DisplayRecord, Category> {
+    with Linker<DisplayRecord, Category>, HaveCategoryField, CategoryLinker {
   @override
-  covariant String tableName = 'DisplayTicketTargetCategoryMap';
+  covariant String tableName = 'DisplayTicketTargetCategoryLinker';
   @override
   final keyTable = DisplayTicketTable.ref();
   @override
@@ -249,9 +252,10 @@ class DisplayTicketTargetCategoryLinker extends Table<Link>
   // </constructor>
 
   @override
-  Future<List<Category>> fetchValuesByIds(List<int> valueIds) async {
+  Future<List<Category>> fetchValuesByIds(
+      List<int> valueIds, Transaction? txn) async {
     var categories = await CategoryTable.use();
-    return await categories.fetchByIds(valueIds);
+    return categories.fetchByIds(valueIds, txn);
   }
 }
 // </Repository>
@@ -320,10 +324,11 @@ class ScheduleRecord extends TicketConfigRecord {
 // </DTO>
 
 // <Repository>
-class ScheduleTable extends Table<ScheduleRecord> {
+class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
   @override
   covariant String tableName = 'Schedules';
 
+  // <constructor>
   ScheduleTable._internal();
   static final ScheduleTable _instance = ScheduleTable._internal();
   static Future<ScheduleTable> use() async {
@@ -332,9 +337,21 @@ class ScheduleTable extends Table<ScheduleRecord> {
   }
 
   factory ScheduleTable.ref() => _instance;
+  // </constructor>
+
+  @override
+  Future<void> replaceCategory(
+      Transaction txn, Category replaced, Category replaceWith) async {
+    await txn.execute('''
+      UPDATE $tableName 
+      SET category = ${replaceWith.id} 
+      WHERE category = ${replaced.id}
+      ''');
+  }
 
   @override
   Future<void> prepare() async {
+    bindCategoryIntegrator();
     await Table.dbProvider.db.execute(makeTable([
       makeIdField(),
       makeForeignField('category', CategoryTable.ref(),
@@ -359,7 +376,8 @@ class ScheduleTable extends Table<ScheduleRecord> {
   }
 
   @override
-  Future<ScheduleRecord> interpret(Map<String, Object?> row) async {
+  Future<ScheduleRecord> interpret(
+      Map<String, Object?> row, Transaction? txn) async {
     var categories = await CategoryTable.use();
     var monthlyRepeatOffset =
         row['repeat_option_monthly_head_origin_in_days'] as int?;
@@ -367,7 +385,7 @@ class ScheduleTable extends Table<ScheduleRecord> {
         row['repeat_option_monthly_tail_origin_in_days'] as int?;
     return ScheduleRecord(
       id: row['id'] as int,
-      category: await categories.fetchById(row['category'] as int),
+      category: await categories.fetchById(row['category'] as int, txn),
       supplement: row['supplement'] as String,
       amount: row['amount'] as int,
       registorationDate: intToDate(row['origin_date'] as int)!,
@@ -396,7 +414,8 @@ class ScheduleTable extends Table<ScheduleRecord> {
   @override
   void validate(ScheduleRecord data) {
     if (data.category == null || data.registorationDate == null) {
-      throw Exception('category and registorationDate must not be null');
+      throw InvalidDataException(
+          'category and registorationDate must not be null');
     }
   }
 
@@ -434,6 +453,25 @@ class ScheduleTable extends Table<ScheduleRecord> {
       'period_option_begin_from': dateToInt(data.startDate),
       'period_option_end_at': dateToInt(data.endDate),
     };
+  }
+
+  @override
+  Future<void> link(Transaction txn, ScheduleRecord data, {int? id}) async {
+    var futureTicketFactoryTable = await FutureTicketFactoryTable.use();
+    id ??= data.id;
+    if (id == null) {
+      throw IlligalUsageException('Tried to link with null id');
+    }
+    await futureTicketFactoryTable.onFactoryUpdated(id, this, txn);
+  }
+
+  @override
+  Future<void> unlink(Transaction txn, ScheduleRecord data) async {
+    var futureTicketFactoryTable = await FutureTicketFactoryTable.use();
+    if (data.id == null) {
+      throw IlligalUsageException('Tried to unlink with null id');
+    }
+    await futureTicketFactoryTable.onFactoryDeleted(data.id!, this, txn);
   }
 }
 // </Repository>
@@ -509,9 +547,10 @@ class EstimationTable extends Table<EstimationRecord> {
   }
 
   @override
-  Future<EstimationRecord> interpret(Map<String, Object?> row) async {
+  Future<EstimationRecord> interpret(
+      Map<String, Object?> row, Transaction? txn) async {
     var linker = await EstimationTargetCategoryLinker.use();
-    var targetCategories = await linker.fetchValues(row['id'] as int);
+    var targetCategories = await linker.fetchValues(row['id'] as int, txn);
     return EstimationRecord(
       id: row['id'] as int,
       targetCategories: targetCategories,
@@ -529,7 +568,6 @@ class EstimationTable extends Table<EstimationRecord> {
   @override
   Map<String, Object?> serialize(EstimationRecord data) {
     return {
-      'id': data.id,
       'period_option_begin_from': dateToInt(data.startDate),
       'period_option_end_at': dateToInt(data.endDate),
       'content_type': data.contentType.index,
@@ -537,33 +575,47 @@ class EstimationTable extends Table<EstimationRecord> {
   }
 
   @override
-  Future<void> link(EstimationRecord data, {int? id}) async {
+  Future<void> link(Transaction txn, EstimationRecord data, {int? id}) async {
+    // Because following lines are not heavy, execute them in sequence (to simplify).
     var linker = await EstimationTargetCategoryLinker.use();
+    var futureTicketFactoryTable = await FutureTicketFactoryTable.use();
+
     id ??= data.id;
     if (id == null) {
-      throw Exception('Tried to link with null id');
+      throw IlligalUsageException('Tried to link with null id');
     }
+
+    // category linking should be done before factory update
+    // because factory update may need category information
     if (data.targetingAllCategories) {
-      await linker.linkValues(id, const []);
+      await linker.linkValues(id, const [], txn);
     } else {
-      await linker.linkValues(id, data.targetCategories);
+      await linker.linkValues(id, data.targetCategories, txn);
     }
+    await futureTicketFactoryTable.onFactoryUpdated(id, this, txn);
   }
 
   @override
-  Future<void> unlink(EstimationRecord data) async {
+  Future<void> unlink(Transaction txn, EstimationRecord data) async {
+    // Because following lines are not heavy, execute them in sequence (to simplify).
     var linker = await EstimationTargetCategoryLinker.use();
+    var futureTicketFactoryTable = await FutureTicketFactoryTable.use();
+
     if (data.id == null) {
-      throw Exception('Tried to unlink with null id');
+      throw IlligalUsageException('Tried to unlink with null id');
     }
-    await linker.linkValues(data.id!, const []);
+
+    await Future.wait([
+      linker.linkValues(data.id!, const [], txn),
+      futureTicketFactoryTable.onFactoryDeleted(data.id!, this, txn),
+    ]);
   }
 }
 
 class EstimationTargetCategoryLinker extends Table<Link>
-    with Linker<EstimationRecord, Category> {
+    with Linker<EstimationRecord, Category>, HaveCategoryField, CategoryLinker {
   @override
-  covariant String tableName = 'EstimationTargetCategoryMap';
+  covariant String tableName = 'EstimationTargetCategoryLinker';
   @override
   final keyTable = EstimationTable.ref();
   @override
@@ -582,9 +634,10 @@ class EstimationTargetCategoryLinker extends Table<Link>
   // </constructor>
 
   @override
-  Future<List<Category>> fetchValuesByIds(List<int> valueIds) async {
+  Future<List<Category>> fetchValuesByIds(
+      List<int> valueIds, Transaction? txn) async {
     var categories = await CategoryTable.use();
-    return categories.fetchByIds(valueIds);
+    return categories.fetchByIds(valueIds, txn);
   }
 }
 // </Repository>
@@ -638,10 +691,11 @@ class LogRecord extends TicketConfigRecord {
 // </DTO>
 
 // <Repository>
-class LogRecordTable extends Table<LogRecord> {
+class LogRecordTable extends Table<LogRecord> with HaveCategoryField {
   @override
-  covariant String tableName = 'LogRecord';
+  covariant String tableName = 'Logs';
 
+  // <constructor>
   LogRecordTable._internal();
   static final LogRecordTable _instance = LogRecordTable._internal();
   static Future<LogRecordTable> use() async {
@@ -650,9 +704,21 @@ class LogRecordTable extends Table<LogRecord> {
   }
 
   factory LogRecordTable.ref() => _instance;
+  // </constructor>
+
+  @override
+  Future<void> replaceCategory(
+      Transaction txn, Category replaced, Category replaceWith) async {
+    await txn.execute('''
+      UPDATE $tableName 
+      SET category = ${replaceWith.id} 
+      WHERE category = ${replaced.id}
+      ''');
+  }
 
   @override
   Future<void> prepare() async {
+    bindCategoryIntegrator();
     await Table.dbProvider.db.execute(makeTable([
       makeIdField(),
       makeForeignField('category', CategoryTable.ref(),
@@ -666,11 +732,12 @@ class LogRecordTable extends Table<LogRecord> {
   }
 
   @override
-  Future<LogRecord> interpret(Map<String, Object?> row) async {
+  Future<LogRecord> interpret(
+      Map<String, Object?> row, Transaction? txn) async {
     var categories = await CategoryTable.use();
     return LogRecord(
       id: row['id'] as int,
-      category: await categories.fetchById(row['category'] as int),
+      category: await categories.fetchById(row['category'] as int, txn),
       supplement: row['supplement'] as String,
       registorationDate: intToDate(row['registeredAt'] as int)!,
       amount: row['amount'] as int,
@@ -682,7 +749,8 @@ class LogRecordTable extends Table<LogRecord> {
   @override
   void validate(LogRecord data) {
     if (data.category == null || data.registorationDate == null) {
-      throw Exception('category and registorationDate must not be null');
+      throw InvalidDataException(
+          'category and registorationDate must not be null');
     }
   }
 

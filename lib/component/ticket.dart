@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:miraibo/data/handler.dart';
-import 'package:miraibo/data/ticketData.dart';
+import 'package:miraibo/data/ticket_data.dart';
 
 /*
 TicketTemplate is a template widget for displaying tickets.

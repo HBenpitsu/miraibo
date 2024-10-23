@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:miraibo/component/general_widget.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import '../data/categoryData.dart';
+import '../data/category_data.dart';
 
 /* 
 In this file, we define the category related components
@@ -69,7 +69,7 @@ class _SingleCategorySelectorState extends State<SingleCategorySelector> {
     widget.controller._category = () => selected;
     optionsFetched = Future(() async {
       var categoryTable = await CategoryTable.use();
-      return categoryTable.fetchAll();
+      return categoryTable.fetchAll(null);
     });
   }
 
@@ -177,7 +177,7 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
   late final Future<void> optionsInitialized;
   Future<void> initializeOptions() async {
     var categoryTable = await CategoryTable.use();
-    options = await categoryTable.fetchAll();
+    options = await categoryTable.fetchAll(null);
     for (Category category in widget.controller.initiallySelectedCategories) {
       options.remove(category);
     }
@@ -302,7 +302,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
   Future<void> initializeMutableList() async {
     var categoryTable = await CategoryTable.use();
     mutableListCtl = MutableListFormController<Category>(
-      items: await categoryTable.fetchAll(),
+      items: await categoryTable.fetchAll(null),
       toLabel: (item) => item.name,
     );
   }

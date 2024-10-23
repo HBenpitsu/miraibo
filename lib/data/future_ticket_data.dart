@@ -1,10 +1,92 @@
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
 import './database.dart';
 import 'ticket_data.dart';
 import 'category_data.dart';
 
-class FutureTicket extends DTO {
+class FutureTicketFactory extends DTO {
   final ScheduleRecord? schedule;
   final EstimationRecord? estimation;
+  const FutureTicketFactory({this.schedule, this.estimation});
+
+  @override
+  Future<void> save() {
+    // TODO: implement save
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> delete() {
+    // TODO: implement delete
+    throw UnimplementedError();
+  }
+}
+
+class FutureTicketFactoryTable extends Table<FutureTicketFactory> {
+  @override
+  covariant String tableName = 'FutureTicketFactories';
+
+  // <constructor>
+  FutureTicketFactoryTable._internal();
+  static final FutureTicketFactoryTable _instance =
+      FutureTicketFactoryTable._internal();
+
+  static Future<FutureTicketFactoryTable> use() async {
+    await _instance.ensureAvailability();
+    return _instance;
+  }
+
+  factory FutureTicketFactoryTable.ref() => _instance;
+  // </constructor>
+
+  @override
+  Future<void> prepare() async {
+    await Table.dbProvider.db.execute(makeTable([
+      makeIdField(),
+      makeForeignField('schedule', ScheduleTable.ref(), rField: 'id'),
+      makeForeignField('estimation', EstimationTable.ref(), rField: 'id'),
+    ]));
+  }
+
+  @override
+  Future<FutureTicketFactory> interpret(
+      Map<String, Object?> row, Transaction? txn) async {
+    var scheduleTable = await ScheduleTable.use();
+    var estimationTable = await EstimationTable.use();
+    return FutureTicketFactory(
+      schedule: await scheduleTable.fetchById(row['schedule'] as int, txn),
+      estimation:
+          await estimationTable.fetchById(row['estimation'] as int, txn),
+    );
+  }
+
+  @override
+  void validate(FutureTicketFactory data) {
+    if (data.schedule?.id == null && data.estimation?.id == null) {
+      throw InvalidDataException(
+          'However schedule or estimation should be set for future ticket factory, both do not exist in the database. ');
+    } else if (data.schedule != null && data.estimation != null) {
+      throw InvalidDataException(
+          'schedule and estimation cannot be set at the same time for future ticket factory.');
+    }
+  }
+
+  @override
+  Map<String, Object?> serialize(FutureTicketFactory data) {
+    return {
+      'schedule': data.schedule?.id,
+      'estimation': data.estimation?.id,
+    };
+  }
+
+  Future<void> onFactoryUpdated(
+      int updatedFactoryId, Table<DTO> factoryKind, Transaction txn) async {}
+  Future<void> onFactoryDeleted(
+      int deletedFactoryId, Table<DTO> factoryKind, Transaction txn) async {}
+}
+
+class FutureTicket extends DTO {
+  final FutureTicketFactory ticketFactory;
   final Category category;
   final String supplement;
   final DateTime scheduledAt;
@@ -12,8 +94,7 @@ class FutureTicket extends DTO {
 
   FutureTicket({
     super.id,
-    this.schedule,
-    this.estimation,
+    required this.ticketFactory,
     required this.category,
     required this.supplement,
     required this.scheduledAt,
@@ -33,7 +114,7 @@ class FutureTicket extends DTO {
   }
 }
 
-class FutureTicketTable extends Table<FutureTicket> {
+class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
   @override
   covariant String tableName = 'FutureTickets';
 
@@ -51,10 +132,11 @@ class FutureTicketTable extends Table<FutureTicket> {
 
   @override
   Future<void> prepare() async {
+    bindCategoryIntegrator();
     await Table.dbProvider.db.execute(makeTable([
       makeIdField(),
-      makeForeignField('schedule', ScheduleTable.ref(), rField: 'id'),
-      makeForeignField('estimation', EstimationTable.ref(), rField: 'id'),
+      makeForeignField('factory', FutureTicketFactoryTable.ref(),
+          rField: 'id', notNull: true),
       makeForeignField('category', CategoryTable.ref(),
           rField: 'id', notNull: true),
       makeTextField('supplement', notNull: true),
@@ -64,15 +146,15 @@ class FutureTicketTable extends Table<FutureTicket> {
   }
 
   @override
-  Future<FutureTicket> interpret(Map<String, Object?> row) async {
-    var scheduleTable = await ScheduleTable.use();
-    var estimationTable = await EstimationTable.use();
+  Future<FutureTicket> interpret(
+      Map<String, Object?> row, Transaction? txn) async {
+    var factoryTable = await FutureTicketFactoryTable.use();
     var categoryTable = await CategoryTable.use();
     return FutureTicket(
       id: row['id'] as int,
-      schedule: await scheduleTable.fetchById(row['schedule'] as int),
-      estimation: await estimationTable.fetchById(row['estimation'] as int),
-      category: (await categoryTable.fetchById(row['category'] as int))!,
+      ticketFactory:
+          (await factoryTable.fetchById(row['factory'] as int, txn))!,
+      category: (await categoryTable.fetchById(row['category'] as int, txn))!,
       supplement: row['supplement'] as String,
       scheduledAt: intToDate(row['scheduledAt'] as int)!,
       amount: row['amount'] as int,
@@ -85,12 +167,21 @@ class FutureTicketTable extends Table<FutureTicket> {
   @override
   Map<String, Object?> serialize(FutureTicket data) {
     return {
-      'schedule': data.schedule?.id,
-      'estimation': data.estimation?.id,
+      'factory': data.ticketFactory.id,
       'category': data.category.id,
       'supplement': data.supplement,
       'scheduledAt': dateToInt(data.scheduledAt)!,
       'amount': data.amount,
     };
+  }
+
+  @override
+  Future<void> replaceCategory(
+      Transaction txn, Category replaced, Category replaceWith) async {
+    await txn.execute('''
+      UPDATE $tableName
+      SET category = ${replaceWith.id}
+      WHERE category = ${replaced.id};
+    ''');
   }
 }
