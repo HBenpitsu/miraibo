@@ -337,7 +337,6 @@ mixin Linker<Kv extends DTO, Vv extends DTO> on Table<Link> {
         valueId: row['value'] as int);
   }
 }
-
 // </general data structure>
 
 // <user exception>

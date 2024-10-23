@@ -70,18 +70,36 @@ class FutureTicketFactoryTable extends Table<FutureTicketFactory> {
   Future<void> onFactoryUpdated(
       int updatedFactoryId, Table<DTO> factoryKind, Transaction txn) async {
     // TODO: implement onFactoryUpdated
+    switch (factoryKind) {
+      case ScheduleTable _:
+        break;
+      case EstimationTable _:
+        break;
+      default:
+        throw InvalidDataException(
+            'The factory kind $factoryKind is not supported.');
+    }
     throw UnimplementedError();
   }
 
   Future<void> onFactoryDeleted(
       int deletedFactoryId, Table<DTO> factoryKind, Transaction txn) async {
     // TODO: implement onFactoryDeleted
+    switch (factoryKind) {
+      case ScheduleTable _:
+        break;
+      case EstimationTable _:
+        break;
+      default:
+        throw InvalidDataException(
+            'The factory kind $factoryKind is not supported.');
+    }
     throw UnimplementedError();
   }
 }
 
 class FutureTicket extends DTO {
-  final FutureTicketFactory ticketFactory;
+  final FutureTicketFactory? ticketFactory;
   final Category category;
   final String supplement;
   final DateTime scheduledAt;
@@ -89,7 +107,7 @@ class FutureTicket extends DTO {
 
   FutureTicket({
     super.id,
-    required this.ticketFactory,
+    this.ticketFactory,
     required this.category,
     required this.supplement,
     required this.scheduledAt,
@@ -145,12 +163,17 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
   }
 
   @override
-  void validate(FutureTicket data) {} // always valid
+  void validate(FutureTicket data) {
+    if (data.ticketFactory == null) {
+      throw InvalidDataException(
+          'The ticket factory should be set for future ticket.');
+    }
+  } // always valid
 
   @override
   Map<String, Object?> serialize(FutureTicket data) {
     return {
-      'factory': data.ticketFactory.id,
+      'factory': data.ticketFactory!.id,
       'category': data.category.id,
       'supplement': data.supplement,
       'scheduledAt': dateToInt(data.scheduledAt)!,
@@ -166,5 +189,52 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
       SET category = ${replaceWith.id}
       WHERE category = ${replaced.id};
     ''');
+  }
+
+  Future<void> eliminateAllByFactory(int factoryId, Transaction? txn) async {
+    await ensureAvailability();
+    if (txn == null) {
+      await Table.dbProvider.db.transaction((txn) async {
+        await eliminateAllByFactory(factoryId, txn);
+      });
+    } else {
+      await txn.execute('''
+            DELETE FROM $tableName
+            WHERE factory = $factoryId;
+          ''');
+    }
+  }
+
+  Future<void> updateAllByFactory(
+      int factoryId, FutureTicket template, Transaction? txn) async {
+    await ensureAvailability();
+    if (txn == null) {
+      await Table.dbProvider.db.transaction((txn) async {
+        await updateAllByFactory(factoryId, template, txn);
+      });
+    } else {
+      await txn.execute('''
+            UPDATE $tableName
+            SET
+              category = ${template.category.id},
+              supplement = '${template.supplement}',
+              amount = ${template.amount}
+            WHERE factory = $factoryId;
+          ''');
+    }
+  }
+
+  Future<void> cleanUp(Transaction? txn) async {
+    await ensureAvailability();
+    if (txn == null) {
+      await Table.dbProvider.db.transaction((txn) async {
+        await cleanUp(txn);
+      });
+    } else {
+      await txn.execute('''
+        DELETE FROM $tableName
+        WHERE scheduledAt < ${dateToInt(DateTime.now())};
+      ''');
+    }
   }
 }
