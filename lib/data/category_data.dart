@@ -18,16 +18,9 @@ class Category extends DTO {
     return ret;
   }
 
-  @override
   Future<void> save() async {
     var categoryTable = await CategoryTable.use();
     await categoryTable.save(this);
-  }
-
-  @override
-  Future<void> delete() async {
-    throw ShouldNotBeCalledException(
-        'category should not be deleted directly. instead, use [Category.integrateWith()]');
   }
 
   Future<void> integrateWith(Category other) async {

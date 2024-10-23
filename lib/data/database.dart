@@ -45,9 +45,6 @@ class DatabaseProvider {
 abstract class DTO {
   final int? id;
   const DTO({this.id});
-
-  Future<void> save();
-  Future<void> delete();
 }
 
 /// Table is a class that represents a table in the database.
@@ -263,16 +260,6 @@ class Link extends DTO {
   final int valueId;
 
   const Link({super.id, required this.keyId, required this.valueId});
-
-  @override
-  Future<void> save() async {
-    throw ShouldNotBeCalledException('Link should not be saved directly');
-  }
-
-  @override
-  Future<void> delete() async {
-    throw ShouldNotBeCalledException('Link should not be deleted directly');
-  }
 }
 
 mixin Linker<Kv extends DTO, Vv extends DTO> on Table<Link> {

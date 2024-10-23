@@ -26,6 +26,8 @@ Abstract class to bundle:
 */
 abstract class TicketConfigRecord extends DTO {
   const TicketConfigRecord({super.id});
+  Future<void> save();
+  Future<void> delete();
 }
 
 // <Display Ticket>

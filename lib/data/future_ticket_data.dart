@@ -8,18 +8,6 @@ class FutureTicketFactory extends DTO {
   final ScheduleRecord? schedule;
   final EstimationRecord? estimation;
   const FutureTicketFactory({this.schedule, this.estimation});
-
-  @override
-  Future<void> save() {
-    // TODO: implement save
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> delete() {
-    // TODO: implement delete
-    throw UnimplementedError();
-  }
 }
 
 class FutureTicketFactoryTable extends Table<FutureTicketFactory> {
@@ -80,9 +68,16 @@ class FutureTicketFactoryTable extends Table<FutureTicketFactory> {
   }
 
   Future<void> onFactoryUpdated(
-      int updatedFactoryId, Table<DTO> factoryKind, Transaction txn) async {}
+      int updatedFactoryId, Table<DTO> factoryKind, Transaction txn) async {
+    // TODO: implement onFactoryUpdated
+    throw UnimplementedError();
+  }
+
   Future<void> onFactoryDeleted(
-      int deletedFactoryId, Table<DTO> factoryKind, Transaction txn) async {}
+      int deletedFactoryId, Table<DTO> factoryKind, Transaction txn) async {
+    // TODO: implement onFactoryDeleted
+    throw UnimplementedError();
+  }
 }
 
 class FutureTicket extends DTO {
@@ -100,18 +95,6 @@ class FutureTicket extends DTO {
     required this.scheduledAt,
     required this.amount,
   });
-
-  @override
-  Future<void> save() {
-    // TODO: implement save
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> delete() {
-    // TODO: implement delete
-    throw UnimplementedError();
-  }
 }
 
 class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
