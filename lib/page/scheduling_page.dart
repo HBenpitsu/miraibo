@@ -782,7 +782,7 @@ class TicketContainer extends StatelessWidget {
         for (var ticketConfig
             in await TicketDataManager().fetchTicketConfigsFor(forThisDate))
           switch (ticketConfig) {
-            DisplayRecord() => DisplayTicket(
+            DisplayTicketRecord() => DisplayTicket(
                 onPressed: () {
                   var controller = DataEditWindowController();
                   showDataEditWindow(

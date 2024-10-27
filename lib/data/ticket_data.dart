@@ -1,4 +1,3 @@
-import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -6,6 +5,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'category_data.dart';
 import './database.dart';
 import './future_ticket_data.dart';
+import './general_enum.dart';
 
 /* 
 This file contains the data classes that define the structure of the data / repository of the data, 
@@ -24,11 +24,17 @@ Abstract class to bundle:
 - EstimationTicketConfigData
 - LogTicketConfigData
 */
+// <ticket config shared traits>
 abstract class TicketConfigRecord extends DTO {
   const TicketConfigRecord({super.id});
   Future<void> save();
   Future<void> delete();
 }
+
+mixin TicketTable<T extends DTO> on Table<T> {
+  Future<List<T>> fetchTicketsRegisteredAt(DateTime date, Transaction? txn);
+}
+// </ticket config shared traits>
 
 // <Display Ticket>
 // <enums>
@@ -55,7 +61,7 @@ enum DisplayTicketContentType {
 // </enums>
 
 // <DTO>
-class DisplayRecord extends TicketConfigRecord {
+class DisplayTicketRecord extends TicketConfigRecord {
   final List<Category> targetCategories;
   final bool targetingAllCategories;
   final DisplayTicketTermMode termMode;
@@ -63,7 +69,7 @@ class DisplayRecord extends TicketConfigRecord {
   final DisplayTicketPeriod designatedPeriod;
   final DisplayTicketContentType contentType;
 
-  const DisplayRecord({
+  const DisplayTicketRecord({
     super.id,
     this.targetCategories = const <Category>[],
     this.targetingAllCategories = true,
@@ -75,30 +81,34 @@ class DisplayRecord extends TicketConfigRecord {
 
   @override
   Future<void> save() async {
-    developer.log('save display ticket config data');
-    throw UnimplementedError();
-    // in progress
+    var table = await DisplayTicketTable.use(null);
+    await table.save(this, null);
   }
 
   @override
   Future<void> delete() async {
-    developer.log('delete display ticket config data');
-    throw UnimplementedError();
-    // in progress
+    var table = await DisplayTicketTable.use(null);
+    await table.delete(this, null);
   }
 }
 // </DTO>
 
 // <Repository>
-class DisplayTicketTable extends Table<DisplayRecord> {
+class DisplayTicketTable extends Table<DisplayTicketRecord> with TicketTable {
   @override
   covariant String tableName = 'DisplayTickets';
+
+  // <field names>
+  static const String periodInDaysField = 'period_in_days';
+  static const String limitDateField = 'limit_date';
+  static const String contentTypeField = 'content_type';
+  // </field names>
 
   // <constructor>
   DisplayTicketTable._internal();
   static final DisplayTicketTable _instance = DisplayTicketTable._internal();
-  static Future<DisplayTicketTable> use() async {
-    await _instance.ensureAvailability();
+  static Future<DisplayTicketTable> use(Transaction? txn) async {
+    await _instance.ensureAvailability(txn);
     return _instance;
   }
 
@@ -106,14 +116,18 @@ class DisplayTicketTable extends Table<DisplayRecord> {
   // </constructor>
 
   @override
-  Future<void> prepare() async {
-    await Table.dbProvider.db.execute(makeTable([
+  Future<void> prepare(Transaction? txn) async {
+    if (txn == null) {
+      return Table.dbProvider.db.transaction((txn) async {
+        return prepare(txn);
+      });
+    }
+    await txn.execute(makeTable([
       makeIdField(),
       // null means targeting all categories
-      makeLinkerField(DisplayTicketTargetCategoryLinker.ref()),
-      makeIntegerField('period_in_days'),
-      makeDateField('limit_date'),
-      makeEnumField('content_type', DisplayTicketContentType.values),
+      makeIntegerField(periodInDaysField),
+      makeDateField(limitDateField),
+      makeEnumField(contentTypeField, DisplayTicketContentType.values),
     ]));
   }
 
@@ -148,8 +162,9 @@ class DisplayTicketTable extends Table<DisplayRecord> {
 
   // <linking handler>
   @override
-  Future<void> link(Transaction txn, DisplayRecord data, {int? id}) async {
-    var linker = await DisplayTicketTargetCategoryLinker.use();
+  Future<void> link(Transaction txn, DisplayTicketRecord data,
+      {int? id}) async {
+    var linker = await DisplayTicketTargetCategoryLinker.use(txn);
     id ??= data.id;
     if (id == null) {
       throw IlligalUsageException('Tried to link with null id');
@@ -162,20 +177,26 @@ class DisplayTicketTable extends Table<DisplayRecord> {
   }
 
   @override
-  Future<void> unlink(Transaction txn, DisplayRecord data) async {
-    var linker = await DisplayTicketTargetCategoryLinker.use();
+  Future<void> unlink(Transaction txn, DisplayTicketRecord data) async {
+    var linker = await DisplayTicketTargetCategoryLinker.use(txn);
     if (data.id == null) {
       throw IlligalUsageException('Tried to unlink with null id');
     }
     await linker.linkValues(data.id!, const [], txn);
   }
+
+  @override
+  Future<void> clear() {
+    DisplayTicketTargetCategoryLinker.ref().clear();
+    return super.clear();
+  }
   // </linking handler>
 
   @override
-  Future<DisplayRecord> interpret(
+  Future<DisplayTicketRecord> interpret(
       Map<String, Object?> row, Transaction? txn) async {
-    int? periodInDays = row['period_in_days'] as int?;
-    int? limitDate = row['limit_date'] as int?;
+    int? periodInDays = row[periodInDaysField] as int?;
+    int? limitDate = row[limitDateField] as int?;
 
     DisplayTicketTermMode termMode;
     if (periodInDays == null && limitDate == null) {
@@ -188,24 +209,25 @@ class DisplayTicketTable extends Table<DisplayRecord> {
       throw InvalidDataException('Both period_in_days and limit_date are set');
     }
 
-    var id = row['id'] as int;
+    var id = row[Table.idField] as int;
 
-    var linker = await DisplayTicketTargetCategoryLinker.use();
+    var linker = await DisplayTicketTargetCategoryLinker.use(txn);
     var targetCategories = await linker.fetchValues(id, txn);
 
-    return DisplayRecord(
+    return DisplayTicketRecord(
       id: id,
       targetCategories: targetCategories,
       targetingAllCategories: targetCategories.isEmpty,
       termMode: termMode,
       designatedDate: intToDate(limitDate),
       designatedPeriod: periodExpressionFromDays(periodInDays),
-      contentType: DisplayTicketContentType.values[row['content_type'] as int],
+      contentType:
+          DisplayTicketContentType.values[row[contentTypeField] as int],
     );
   }
 
   @override
-  void validate(DisplayRecord data) {
+  void validate(DisplayTicketRecord data) {
     switch (data.termMode) {
       case DisplayTicketTermMode.untilToday:
       case DisplayTicketTermMode.lastDesignatedPeriod:
@@ -220,20 +242,42 @@ class DisplayTicketTable extends Table<DisplayRecord> {
   }
 
   @override
-  Map<String, Object?> serialize(DisplayRecord data) {
+  Map<String, Object?> serialize(DisplayTicketRecord data) {
     return {
-      'period_in_days':
+      periodInDaysField:
           data.termMode == DisplayTicketTermMode.lastDesignatedPeriod
               ? daysFromPeriodExpression(data.designatedPeriod)
               : null,
-      'limit_date': dateToInt(data.designatedDate),
-      'content_type': data.contentType.index,
+      limitDateField: dateToInt(data.designatedDate),
+      contentTypeField: data.contentType.index,
     };
   }
+
+  // <tickets fetch methods>
+  @override
+  Future<List<DisplayTicketRecord>> fetchTicketsRegisteredAt(
+      DateTime date, Transaction? txn) async {
+    if (txn == null) {
+      return Table.dbProvider.db.transaction((txn) async {
+        return fetchTicketsRegisteredAt(date, txn);
+      });
+    }
+
+    await ensureAvailability(txn);
+    var result = await txn.rawQuery('''
+      SELECT * FROM $tableName
+      WHERE DATE( $limitDateField ) <= DATE( ${dateToInt(date)} ) OR $limitDateField IS NULL
+    ''');
+    return [for (var row in result) await interpret(row, txn)];
+  }
+  // </tickets fetch methods>
 }
 
 class DisplayTicketTargetCategoryLinker extends Table<Link>
-    with Linker<DisplayRecord, Category>, HaveCategoryField, CategoryLinker {
+    with
+        Linker<DisplayTicketRecord, Category>,
+        HaveCategoryField,
+        CategoryLinker {
   @override
   covariant String tableName = 'DisplayTicketTargetCategoryLinker';
   @override
@@ -245,8 +289,8 @@ class DisplayTicketTargetCategoryLinker extends Table<Link>
   DisplayTicketTargetCategoryLinker._internal();
   static final DisplayTicketTargetCategoryLinker _instance =
       DisplayTicketTargetCategoryLinker._internal();
-  static Future<DisplayTicketTargetCategoryLinker> use() async {
-    await _instance.ensureAvailability();
+  static Future<DisplayTicketTargetCategoryLinker> use(Transaction? txn) async {
+    await _instance.ensureAvailability(txn);
     return _instance;
   }
 
@@ -256,7 +300,7 @@ class DisplayTicketTargetCategoryLinker extends Table<Link>
   @override
   Future<List<Category>> fetchValuesByIds(
       List<int> valueIds, Transaction? txn) async {
-    var categories = await CategoryTable.use();
+    var categories = await CategoryTable.use(txn);
     return categories.fetchByIds(valueIds, txn);
   }
 }
@@ -267,24 +311,14 @@ class DisplayTicketTargetCategoryLinker extends Table<Link>
 // <enums>
 enum RepeatType { no, interval, weekly, monthly, anually }
 
-enum DayOfWeek {
-  sunday,
-  monday,
-  tuesday,
-  wednesday,
-  thursday,
-  friday,
-  saturday
-}
-
 enum MonthlyRepeatType { fromHead, fromTail }
 // </enums>
 
 // <DTO>
-class ScheduleRecord extends TicketConfigRecord {
+class ScheduleRecord extends TicketConfigRecord with FutureTicketFactory {
   final Category? category;
   final String supplement;
-  final DateTime? registorationDate;
+  final DateTime? originDate;
   final int amount;
   final RepeatType repeatType;
   final Duration repeatInterval;
@@ -298,7 +332,7 @@ class ScheduleRecord extends TicketConfigRecord {
     super.id,
     this.category,
     this.supplement = '',
-    this.registorationDate,
+    this.originDate,
     this.amount = 0,
     this.repeatType = RepeatType.no,
     this.repeatInterval = const Duration(days: 1),
@@ -311,16 +345,14 @@ class ScheduleRecord extends TicketConfigRecord {
 
   @override
   Future<void> save() async {
-    developer.log('save schedule ticket config data');
-    throw UnimplementedError();
-    // in progress
+    var table = await ScheduleTable.use(null);
+    await table.save(this, null);
   }
 
   @override
   Future<void> delete() async {
-    developer.log('delete schedule ticket config data');
-    throw UnimplementedError();
-    // in progress
+    var table = await ScheduleTable.use(null);
+    await table.delete(this, null);
   }
 }
 // </DTO>
@@ -330,11 +362,35 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
   @override
   covariant String tableName = 'Schedules';
 
+  // <field names>
+  static const String supplementField = 'supplement';
+  static const String categoryField = 'category';
+  static const String amountField = 'amount';
+  static const String originDateField = 'origin_date';
+  static const String repeatTypeField = 'repeat_type';
+  static const String repeatIntervalField = 'repeat_option_interval_in_days';
+  static const Map<DayOfWeek, String> repeatOnDay = {
+    DayOfWeek.sunday: 'repeat_option_on_Sunday',
+    DayOfWeek.monday: 'repeat_option_on_Monday',
+    DayOfWeek.tuesday: 'repeat_option_on_Tuesday',
+    DayOfWeek.wednesday: 'repeat_option_on_Wednesday',
+    DayOfWeek.thursday: 'repeat_option_on_Thursday',
+    DayOfWeek.friday: 'repeat_option_on_Friday',
+    DayOfWeek.saturday: 'repeat_option_on_Saturday',
+  };
+  static const String monthlyRepeatHeadOriginField =
+      'repeat_option_monthly_head_origin_in_days';
+  static const String monthlyRepeatTailOriginField =
+      'repeat_option_monthly_tail_origin_in_days';
+  static const String periodBeginField = 'period_option_begin_from';
+  static const String periodEndField = 'period_option_end_at';
+  // </field names>
+
   // <constructor>
   ScheduleTable._internal();
   static final ScheduleTable _instance = ScheduleTable._internal();
-  static Future<ScheduleTable> use() async {
-    await _instance.ensureAvailability();
+  static Future<ScheduleTable> use(Transaction? txn) async {
+    await _instance.ensureAvailability(txn);
     return _instance;
   }
 
@@ -346,76 +402,78 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
       Transaction txn, Category replaced, Category replaceWith) async {
     await txn.execute('''
       UPDATE $tableName 
-      SET category = ${replaceWith.id} 
-      WHERE category = ${replaced.id}
+      SET $categoryField = ${replaceWith.id} 
+      WHERE $categoryField = ${replaced.id}
       ''');
   }
 
   @override
-  Future<void> prepare() async {
+  Future<void> prepare(Transaction? txn) async {
+    if (txn == null) {
+      return Table.dbProvider.db.transaction((txn) async {
+        return prepare(txn);
+      });
+    }
+
     bindCategoryIntegrator();
-    await Table.dbProvider.db.execute(makeTable([
+    await txn.execute(makeTable([
       makeIdField(),
-      makeForeignField('category', CategoryTable.ref(),
-          rField: 'id', notNull: true),
-      makeTextField('supplement', notNull: true),
-      makeIntegerField('amount', notNull: true),
-      makeDateField('origin_date', notNull: true),
-      makeEnumField('repeat_type', RepeatType.values),
-      makeIntegerField('repeat_option_interval_in_days', notNull: true),
-      makeBooleanField('repeat_option_on_Sunday'),
-      makeBooleanField('repeat_option_on_Monday'),
-      makeBooleanField('repeat_option_on_Tuesday'),
-      makeBooleanField('repeat_option_on_Wednesday'),
-      makeBooleanField('repeat_option_on_Thursday'),
-      makeBooleanField('repeat_option_on_Friday'),
-      makeBooleanField('repeat_option_on_Saturday'),
-      makeIntegerField('repeat_option_monthly_head_origin_in_days'),
-      makeIntegerField('repeat_option_monthly_tail_origin_in_days'),
-      makeDateField('period_option_begin_from'),
-      makeDateField('period_option_end_at'),
+      makeTextField(supplementField, notNull: true),
+      ...makeForeignField(categoryField, CategoryTable.ref(),
+          rField: Table.idField, notNull: true),
+      makeIntegerField(amountField, notNull: true),
+      makeDateField(originDateField, notNull: true),
+      makeEnumField(repeatTypeField, RepeatType.values),
+      makeIntegerField(repeatIntervalField, notNull: true),
+      makeBooleanField(repeatOnDay[DayOfWeek.sunday]!),
+      makeBooleanField(repeatOnDay[DayOfWeek.monday]!),
+      makeBooleanField(repeatOnDay[DayOfWeek.tuesday]!),
+      makeBooleanField(repeatOnDay[DayOfWeek.wednesday]!),
+      makeBooleanField(repeatOnDay[DayOfWeek.thursday]!),
+      makeBooleanField(repeatOnDay[DayOfWeek.friday]!),
+      makeBooleanField(repeatOnDay[DayOfWeek.saturday]!),
+      makeIntegerField(monthlyRepeatHeadOriginField),
+      makeIntegerField(monthlyRepeatTailOriginField),
+      makeDateField(periodBeginField),
+      makeDateField(periodEndField),
     ]));
   }
 
   @override
   Future<ScheduleRecord> interpret(
       Map<String, Object?> row, Transaction? txn) async {
-    var categories = await CategoryTable.use();
-    var monthlyRepeatOffset =
-        row['repeat_option_monthly_head_origin_in_days'] as int?;
-    monthlyRepeatOffset ??=
-        row['repeat_option_monthly_tail_origin_in_days'] as int?;
+    var categories = await CategoryTable.use(txn);
+    var monthlyRepeatOffset = row[monthlyRepeatHeadOriginField] as int?;
+    monthlyRepeatOffset ??= row[monthlyRepeatTailOriginField] as int?;
     return ScheduleRecord(
-      id: row['id'] as int,
-      category: await categories.fetchById(row['category'] as int, txn),
-      supplement: row['supplement'] as String,
-      amount: row['amount'] as int,
-      registorationDate: intToDate(row['origin_date'] as int)!,
-      repeatType: RepeatType.values[row['repeat_type'] as int],
-      repeatInterval:
-          Duration(days: row['repeat_option_interval_in_days'] as int),
+      id: row[Table.idField] as int,
+      category: await categories.fetchById(row[categoryField] as int, txn),
+      supplement: row[supplementField] as String,
+      amount: row[amountField] as int,
+      originDate: intToDate(row[originDateField] as int)!,
+      repeatType: RepeatType.values[row[repeatTypeField] as int],
+      repeatInterval: Duration(days: row[repeatIntervalField] as int),
       repeatDayOfWeek: [
-        if (row['repeat_option_on_Sunday'] == 1) DayOfWeek.sunday,
-        if (row['repeat_option_on_Monday'] == 1) DayOfWeek.monday,
-        if (row['repeat_option_on_Tuesday'] == 1) DayOfWeek.tuesday,
-        if (row['repeat_option_on_Wednesday'] == 1) DayOfWeek.wednesday,
-        if (row['repeat_option_on_Thursday'] == 1) DayOfWeek.thursday,
-        if (row['repeat_option_on_Friday'] == 1) DayOfWeek.friday,
-        if (row['repeat_option_on_Saturday'] == 1) DayOfWeek.saturday,
+        if (row[repeatOnDay[DayOfWeek.sunday]!] == 1) DayOfWeek.sunday,
+        if (row[repeatOnDay[DayOfWeek.monday]!] == 1) DayOfWeek.monday,
+        if (row[repeatOnDay[DayOfWeek.tuesday]!] == 1) DayOfWeek.tuesday,
+        if (row[repeatOnDay[DayOfWeek.wednesday]!] == 1) DayOfWeek.wednesday,
+        if (row[repeatOnDay[DayOfWeek.thursday]!] == 1) DayOfWeek.thursday,
+        if (row[repeatOnDay[DayOfWeek.friday]!] == 1) DayOfWeek.friday,
+        if (row[repeatOnDay[DayOfWeek.saturday]!] == 1) DayOfWeek.saturday,
       ],
-      monthlyRepeatType:
-          row['repeat_option_monthly_head_origin_in_days'] != null
-              ? MonthlyRepeatType.fromHead
-              : MonthlyRepeatType.fromTail,
+      monthlyRepeatType: row[monthlyRepeatHeadOriginField] != null
+          ? MonthlyRepeatType.fromHead
+          : MonthlyRepeatType.fromTail,
       monthlyRepeatOffset: monthlyRepeatOffset ?? 0,
-      startDate: intToDate(row['period_option_begin_from'] as int?),
-      endDate: intToDate(row['period_option_end_at'] as int?),
+      startDate: intToDate(row[periodBeginField] as int?),
+      endDate: intToDate(row[periodEndField] as int?),
     );
   }
 
   @override
   void validate(ScheduleRecord data) {
-    if (data.category == null || data.registorationDate == null) {
+    if (data.category == null || data.originDate == null) {
       throw InvalidDataException(
           'category and registorationDate must not be null');
     }
@@ -424,57 +482,68 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
   @override
   Map<String, Object?> serialize(ScheduleRecord data) {
     return {
-      'category': data.category!.id,
-      'supplement': data.supplement,
-      'amount': data.amount,
-      'origin_date': dateToInt(data.registorationDate)!,
-      'repeat_type': data.repeatType.index,
-      'repeat_option_interval_in_days': data.repeatInterval.inDays,
-      'repeat_option_on_Sunday':
+      categoryField: data.category!.id,
+      supplementField: data.supplement,
+      amountField: data.amount,
+      originDateField: dateToInt(data.originDate)!,
+      repeatTypeField: data.repeatType.index,
+      repeatIntervalField: data.repeatInterval.inDays,
+      repeatOnDay[DayOfWeek.sunday]!:
           data.repeatDayOfWeek.contains(DayOfWeek.sunday) ? 1 : 0,
-      'repeat_option_on_Monday':
+      repeatOnDay[DayOfWeek.monday]!:
           data.repeatDayOfWeek.contains(DayOfWeek.monday) ? 1 : 0,
-      'repeat_option_on_Tuesday':
+      repeatOnDay[DayOfWeek.tuesday]!:
           data.repeatDayOfWeek.contains(DayOfWeek.tuesday) ? 1 : 0,
-      'repeat_option_on_Wednesday':
+      repeatOnDay[DayOfWeek.wednesday]!:
           data.repeatDayOfWeek.contains(DayOfWeek.wednesday) ? 1 : 0,
-      'repeat_option_on_Thursday':
+      repeatOnDay[DayOfWeek.thursday]!:
           data.repeatDayOfWeek.contains(DayOfWeek.thursday) ? 1 : 0,
-      'repeat_option_on_Friday':
+      repeatOnDay[DayOfWeek.friday]!:
           data.repeatDayOfWeek.contains(DayOfWeek.friday) ? 1 : 0,
-      'repeat_option_on_Saturday':
+      repeatOnDay[DayOfWeek.saturday]!:
           data.repeatDayOfWeek.contains(DayOfWeek.sunday) ? 1 : 0,
-      'repeat_option_monthly_head_origin_in_days':
+      monthlyRepeatHeadOriginField:
           data.monthlyRepeatType == MonthlyRepeatType.fromHead
               ? data.monthlyRepeatOffset
               : null,
-      'repeat_option_monthly_tail_origin_in_days':
+      monthlyRepeatTailOriginField:
           data.monthlyRepeatType == MonthlyRepeatType.fromTail
               ? data.monthlyRepeatOffset
               : null,
-      'period_option_begin_from': dateToInt(data.startDate),
-      'period_option_end_at': dateToInt(data.endDate),
+      periodBeginField: dateToInt(data.startDate),
+      periodEndField: dateToInt(data.endDate),
     };
   }
 
+  // <linking handler>
   @override
   Future<void> link(Transaction txn, ScheduleRecord data, {int? id}) async {
-    var futureTicketFactoryTable = await FutureTicketFactoryTable.use();
+    var futureTicketFactoryTable =
+        await FutureTicketFactoryAbstractorTable.use(txn);
     id ??= data.id;
     if (id == null) {
       throw IlligalUsageException('Tried to link with null id');
     }
-    await futureTicketFactoryTable.onFactoryUpdated(id, this, txn);
+    await futureTicketFactoryTable.onFactoryUpdated(data, txn);
   }
 
   @override
   Future<void> unlink(Transaction txn, ScheduleRecord data) async {
-    var futureTicketFactoryTable = await FutureTicketFactoryTable.use();
+    var futureTicketFactoryTable =
+        await FutureTicketFactoryAbstractorTable.use(txn);
     if (data.id == null) {
       throw IlligalUsageException('Tried to unlink with null id');
     }
-    await futureTicketFactoryTable.onFactoryDeleted(data.id!, this, txn);
+    await futureTicketFactoryTable.onFactoryDeleted(data, txn);
   }
+
+  @override
+  Future<void> clear() {
+    FutureTicketFactoryAbstractorTable.ref().clear();
+    FutureTicketTable.ref().clear();
+    return super.clear();
+  }
+  // </linking handler>
 }
 // </Repository>
 // </Schedule Ticket>
@@ -490,7 +559,7 @@ enum EstimationTicketContentType {
 // </enums>
 
 // <DTO>
-class EstimationRecord extends TicketConfigRecord {
+class EstimationRecord extends TicketConfigRecord with FutureTicketFactory {
   final List<Category> targetCategories;
   final bool targetingAllCategories;
   final DateTime? startDate;
@@ -499,16 +568,14 @@ class EstimationRecord extends TicketConfigRecord {
 
   @override
   Future<void> save() async {
-    developer.log('save estimation ticket config data');
-    throw UnimplementedError();
-    // in progress
+    var table = await EstimationTable.use(null);
+    await table.save(this, null);
   }
 
   @override
   Future<void> delete() async {
-    developer.log('delete estimation ticket config data');
-    throw UnimplementedError();
-    // in progress
+    var table = await EstimationTable.use(null);
+    await table.delete(this, null);
   }
 
   const EstimationRecord(
@@ -526,41 +593,56 @@ class EstimationTable extends Table<EstimationRecord> {
   @override
   covariant String tableName = 'Estimations';
 
+  // <field names>
+  static const String periodBeginField = 'period_option_begin_from';
+  static const String periodEndField = 'period_option_end_at';
+  static const String contentTypeField = 'content_type';
+  // </field names>
+
   // <constructor>
   EstimationTable._internal();
   static final EstimationTable _instance = EstimationTable._internal();
-  static Future<EstimationTable> use() async {
-    await _instance.ensureAvailability();
+  static Future<EstimationTable> use(Transaction? txn) async {
+    await _instance.ensureAvailability(txn);
     return _instance;
   }
 
   factory EstimationTable.ref() => _instance;
   // </constructor>
 
+  // <initialization>
   @override
-  Future<void> prepare() async {
-    await Table.dbProvider.db.execute(makeTable([
+  Future<void> prepare(Transaction? txn) async {
+    if (txn == null) {
+      return Table.dbProvider.db.transaction((txn) async {
+        return prepare(txn);
+      });
+    }
+
+    await txn.execute(makeTable([
       makeIdField(),
-      makeLinkerField(EstimationTargetCategoryLinker.ref()),
-      makeDateField('period_option_begin_from'),
-      makeDateField('period_option_end_at'),
-      makeEnumField('content_type', EstimationTicketContentType.values),
+      makeDateField(periodBeginField),
+      makeDateField(periodEndField),
+      makeEnumField(contentTypeField, EstimationTicketContentType.values),
     ]));
   }
+  // </initialization>
 
+  // <basic table operation>
   @override
   Future<EstimationRecord> interpret(
       Map<String, Object?> row, Transaction? txn) async {
-    var linker = await EstimationTargetCategoryLinker.use();
-    var targetCategories = await linker.fetchValues(row['id'] as int, txn);
+    var linker = await EstimationTargetCategoryLinker.use(txn);
+    var targetCategories =
+        await linker.fetchValues(row[Table.idField] as int, txn);
     return EstimationRecord(
-      id: row['id'] as int,
+      id: row[Table.idField] as int,
       targetCategories: targetCategories,
       targetingAllCategories: targetCategories.isEmpty,
-      startDate: intToDate(row['period_option_begin_from'] as int?),
-      endDate: intToDate(row['period_option_end_at'] as int?),
+      startDate: intToDate(row[periodBeginField] as int?),
+      endDate: intToDate(row[periodEndField] as int?),
       contentType:
-          EstimationTicketContentType.values[row['content_type'] as int],
+          EstimationTicketContentType.values[row[contentTypeField] as int],
     );
   }
 
@@ -570,17 +652,20 @@ class EstimationTable extends Table<EstimationRecord> {
   @override
   Map<String, Object?> serialize(EstimationRecord data) {
     return {
-      'period_option_begin_from': dateToInt(data.startDate),
-      'period_option_end_at': dateToInt(data.endDate),
-      'content_type': data.contentType.index,
+      periodBeginField: dateToInt(data.startDate),
+      periodEndField: dateToInt(data.endDate),
+      contentTypeField: data.contentType.index,
     };
   }
+  // </basic table operation>
 
+  // <linking handler>
   @override
   Future<void> link(Transaction txn, EstimationRecord data, {int? id}) async {
     // Because following lines are not heavy, execute them in sequence (to simplify).
-    var linker = await EstimationTargetCategoryLinker.use();
-    var futureTicketFactoryTable = await FutureTicketFactoryTable.use();
+    var linker = await EstimationTargetCategoryLinker.use(txn);
+    var futureTicketFactoryTable =
+        await FutureTicketFactoryAbstractorTable.use(txn);
 
     id ??= data.id;
     if (id == null) {
@@ -594,14 +679,15 @@ class EstimationTable extends Table<EstimationRecord> {
     } else {
       await linker.linkValues(id, data.targetCategories, txn);
     }
-    await futureTicketFactoryTable.onFactoryUpdated(id, this, txn);
+    await futureTicketFactoryTable.onFactoryUpdated(data, txn);
   }
 
   @override
   Future<void> unlink(Transaction txn, EstimationRecord data) async {
     // Because following lines are not heavy, execute them in sequence (to simplify).
-    var linker = await EstimationTargetCategoryLinker.use();
-    var futureTicketFactoryTable = await FutureTicketFactoryTable.use();
+    var linker = await EstimationTargetCategoryLinker.use(txn);
+    var futureTicketFactoryTable =
+        await FutureTicketFactoryAbstractorTable.use(txn);
 
     if (data.id == null) {
       throw IlligalUsageException('Tried to unlink with null id');
@@ -609,9 +695,18 @@ class EstimationTable extends Table<EstimationRecord> {
 
     await Future.wait([
       linker.linkValues(data.id!, const [], txn),
-      futureTicketFactoryTable.onFactoryDeleted(data.id!, this, txn),
+      futureTicketFactoryTable.onFactoryDeleted(data, txn),
     ]);
   }
+
+  @override
+  Future<void> clear() {
+    EstimationTargetCategoryLinker.ref().clear();
+    FutureTicketFactoryAbstractorTable.ref().clear();
+    FutureTicketTable.ref().clear();
+    return super.clear();
+  }
+  // </linking handler>
 }
 
 class EstimationTargetCategoryLinker extends Table<Link>
@@ -627,8 +722,8 @@ class EstimationTargetCategoryLinker extends Table<Link>
   EstimationTargetCategoryLinker._internal();
   static final EstimationTargetCategoryLinker _instance =
       EstimationTargetCategoryLinker._internal();
-  static Future<EstimationTargetCategoryLinker> use() async {
-    await _instance.ensureAvailability();
+  static Future<EstimationTargetCategoryLinker> use(Transaction? txn) async {
+    await _instance.ensureAvailability(txn);
     return _instance;
   }
 
@@ -638,7 +733,13 @@ class EstimationTargetCategoryLinker extends Table<Link>
   @override
   Future<List<Category>> fetchValuesByIds(
       List<int> valueIds, Transaction? txn) async {
-    var categories = await CategoryTable.use();
+    if (txn == null) {
+      return Table.dbProvider.db.transaction((txn) async {
+        return fetchValuesByIds(valueIds, txn);
+      });
+    }
+
+    var categories = await CategoryTable.use(txn);
     return categories.fetchByIds(valueIds, txn);
   }
 }
@@ -668,14 +769,14 @@ class LogRecord extends TicketConfigRecord {
 
   @override
   Future<void> save() async {
-    developer.log('save log ticket config data');
-    // in progress
+    var table = await LogRecordTable.use(null);
+    await table.save(this, null);
   }
 
   @override
   Future<void> delete() async {
-    developer.log('delete log ticket config data');
-    // in progress
+    var table = await LogRecordTable.use(null);
+    await table.delete(this, null);
   }
 
   LogRecord applyPreset(LogRecord preset) {
@@ -697,11 +798,20 @@ class LogRecordTable extends Table<LogRecord> with HaveCategoryField {
   @override
   covariant String tableName = 'Logs';
 
+  // <field names>
+  static const String supplementField = 'supplement';
+  static const String categoryField = 'category';
+  static const String registeredAtField = 'registeredAt';
+  static const String amountField = 'amount';
+  static const String imagePathField = 'imagePath';
+  static const String confirmedField = 'confirmed';
+  // </field names>
+
   // <constructor>
   LogRecordTable._internal();
   static final LogRecordTable _instance = LogRecordTable._internal();
-  static Future<LogRecordTable> use() async {
-    await _instance.ensureAvailability();
+  static Future<LogRecordTable> use(Transaction? txn) async {
+    await _instance.ensureAvailability(txn);
     return _instance;
   }
 
@@ -713,38 +823,46 @@ class LogRecordTable extends Table<LogRecord> with HaveCategoryField {
       Transaction txn, Category replaced, Category replaceWith) async {
     await txn.execute('''
       UPDATE $tableName 
-      SET category = ${replaceWith.id} 
-      WHERE category = ${replaced.id}
+      SET $categoryField = ${replaceWith.id} 
+      WHERE $categoryField = ${replaced.id}
       ''');
   }
 
   @override
-  Future<void> prepare() async {
+  Future<void> prepare(Transaction? txn) async {
+    if (txn == null) {
+      return Table.dbProvider.db.transaction((txn) async {
+        return prepare(txn);
+      });
+    }
+
     bindCategoryIntegrator();
-    await Table.dbProvider.db.execute(makeTable([
+    await txn.execute(makeTable([
       makeIdField(),
-      makeForeignField('category', CategoryTable.ref(),
-          rField: 'id', notNull: true),
-      makeTextField('supplement', notNull: true),
-      makeDateField('registeredAt', notNull: true),
-      makeIntegerField('amount', notNull: true),
-      makeTextField('imagePath'),
-      makeBooleanField('confirmed'),
+      makeTextField(supplementField, notNull: true),
+      ...makeForeignField(categoryField, CategoryTable.ref(),
+          rField: Table.idField, notNull: true),
+      makeDateField(registeredAtField, notNull: true),
+      makeIntegerField(amountField, notNull: true),
+      makeTextField(imagePathField),
+      makeBooleanField(confirmedField),
     ]));
   }
 
   @override
   Future<LogRecord> interpret(
       Map<String, Object?> row, Transaction? txn) async {
-    var categories = await CategoryTable.use();
+    var categories = await CategoryTable.use(txn);
     return LogRecord(
-      id: row['id'] as int,
-      category: await categories.fetchById(row['category'] as int, txn),
-      supplement: row['supplement'] as String,
-      registorationDate: intToDate(row['registeredAt'] as int)!,
-      amount: row['amount'] as int,
-      confirmed: row['confirmed'] as bool,
-      image: row['imagePath'] != null ? File(row['imagePath'] as String) : null,
+      id: row[Table.idField] as int,
+      category: await categories.fetchById(row[categoryField] as int, txn),
+      supplement: row[supplementField] as String,
+      registorationDate: intToDate(row[registeredAtField] as int)!,
+      amount: row[amountField] as int,
+      confirmed: (row[confirmedField] as int) == 1,
+      image: row[imagePathField] != null
+          ? File(row[imagePathField] as String)
+          : null,
     );
   }
 
@@ -759,12 +877,12 @@ class LogRecordTable extends Table<LogRecord> with HaveCategoryField {
   @override
   Map<String, Object?> serialize(LogRecord data) {
     return {
-      'category': data.category!.id,
-      'supplement': data.supplement,
-      'registeredAt': dateToInt(data.registorationDate)!,
-      'amount': data.amount,
-      'imagePath': data.image?.path,
-      'confirmed': data.confirmed ? 1 : 0,
+      categoryField: data.category!.id,
+      supplementField: data.supplement,
+      registeredAtField: dateToInt(data.registorationDate)!,
+      amountField: data.amount,
+      imagePathField: data.image?.path,
+      confirmedField: data.confirmed ? 1 : 0,
     };
   }
 }

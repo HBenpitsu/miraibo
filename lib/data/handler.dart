@@ -46,7 +46,7 @@ class StatisticalAnalyzer {
   static final StatisticalAnalyzer _instance = StatisticalAnalyzer._internal();
   factory StatisticalAnalyzer() => _instance;
 
-  Future<int> calcValueForDisplayTicket(DisplayRecord data) async {
+  Future<int> calcValueForDisplayTicket(DisplayTicketRecord data) async {
     return 0;
   }
 

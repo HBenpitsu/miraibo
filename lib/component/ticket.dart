@@ -119,7 +119,7 @@ class ScheduleTicket extends StatelessWidget {
         }
       } else {
         label +=
-            'scheduled at: ${data.registorationDate?.year}-${data.registorationDate?.month}-${data.registorationDate?.day} ';
+            'scheduled at: ${data.originDate?.year}-${data.originDate?.month}-${data.originDate?.day} ';
       }
     } else {
       label +=
@@ -152,7 +152,7 @@ class ScheduleTicket extends StatelessWidget {
 
 class DisplayTicket extends StatelessWidget {
   final void Function() onPressed;
-  final DisplayRecord data;
+  final DisplayTicketRecord data;
   const DisplayTicket({super.key, required this.onPressed, required this.data});
 
   List<String> categoryLabel() {

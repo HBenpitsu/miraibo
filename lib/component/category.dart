@@ -67,7 +67,7 @@ class _SingleCategorySelectorState extends State<SingleCategorySelector> {
     widget.controller._isInitialized = false;
     widget.controller._category = () => selected;
     optionsFetched = Future(() async {
-      var categoryTable = await CategoryTable.use();
+      var categoryTable = await CategoryTable.use(null);
       return categoryTable.fetchAll(null);
     });
   }
@@ -175,7 +175,7 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
 
   late final Future<void> optionsInitialized;
   Future<void> initializeOptions() async {
-    var categoryTable = await CategoryTable.use();
+    var categoryTable = await CategoryTable.use(null);
     options = await categoryTable.fetchAll(null);
     for (Category category in widget.controller.initiallySelectedCategories) {
       options.remove(category);
@@ -299,7 +299,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
   late final Future<void> categoriesFetched;
 
   Future<void> initializeMutableList() async {
-    var categoryTable = await CategoryTable.use();
+    var categoryTable = await CategoryTable.use(null);
     mutableListCtl = MutableListFormController<Category>(
       items: await categoryTable.fetchAll(null),
       toLabel: (item) => item.name,
@@ -331,7 +331,9 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
         controller: textCtl,
         onSubmitted: (value) {
           if (value.isEmpty) return;
-          mutableListCtl.addItem(Category.saveInFuture(value));
+          Category.make(value).then(
+            (cat) => mutableListCtl.addItem(cat),
+          );
           textCtl.clear();
           // do not lose focus
           focusNode.requestFocus();
@@ -344,7 +346,9 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
           color: Theme.of(context).colorScheme.primary,
           onPressed: () {
             if (textCtl.text.isEmpty) return;
-            mutableListCtl.addItem(Category.saveInFuture(textCtl.text));
+            Category.make(textCtl.text).then(
+              (cat) => mutableListCtl.addItem(cat),
+            );
             textCtl.clear();
           },
         ),

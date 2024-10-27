@@ -5,6 +5,7 @@ import 'package:miraibo/component/category.dart';
 import 'package:miraibo/component/configurator_component.dart';
 import 'package:miraibo/data/handler.dart';
 import '../data/ticket_data.dart';
+import '../data/general_enum.dart';
 import 'general_widget.dart';
 
 // <data edit modal window> a container of a configuration section
@@ -215,13 +216,13 @@ For more details, such as the options for each field, see the component-structur
 */
 class DisplayTicketConfigSection extends BasicConfigSectionWidget {
   @override
-  final DisplayRecord initialConfigData;
+  final DisplayTicketRecord initialConfigData;
   final double? width;
 
   const DisplayTicketConfigSection({
     super.key,
     required super.controller,
-    this.initialConfigData = const DisplayRecord(),
+    this.initialConfigData = const DisplayTicketRecord(),
     this.width,
   });
 
@@ -267,7 +268,7 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
           context, 'Category unselected. Please select at least one category.');
       return;
     }
-    var configData = DisplayRecord(
+    var configData = DisplayTicketRecord(
       targetCategories: categorySelectorCtl.selectedCategories,
       targetingAllCategories: categorySelectorCtl.allCategoriesSelected,
       termMode: termMode,
@@ -465,7 +466,7 @@ class _ScheduleTicketConfiguraitonSectionState
         TextEditingController(text: widget.initialConfigData.supplement);
     moneyFormCtl = MoneyformController(amount: widget.initialConfigData.amount);
     registorationDateCtl = DatePickButtonController(
-      initialDate: widget.initialConfigData.registorationDate ?? DateTime.now(),
+      initialDate: widget.initialConfigData.originDate ?? DateTime.now(),
     );
     repeatSettingCtl = ScheduleTicketRepeatSettingSectorController(
       initialRepeatType: widget.initialConfigData.repeatType,
@@ -492,7 +493,7 @@ class _ScheduleTicketConfiguraitonSectionState
     var configData = ScheduleRecord(
       category: categorySelectorCtl.selected!,
       supplement: supplementCtl.text,
-      registorationDate: registorationDateCtl.selected,
+      originDate: registorationDateCtl.selected,
       amount: moneyFormCtl.amount,
       repeatType: repeatSettingCtl.repeatType,
       repeatInterval: repeatSettingCtl.repeatInterval,
@@ -1287,7 +1288,7 @@ class _TicketCreationSectionState extends State<TicketCreationSection>
   TabController? tabController;
 
   DataEditWindowController displayTicketConfigCtl = DataEditWindowController();
-  late DisplayRecord initialDisplayTicketConfigData;
+  late DisplayTicketRecord initialDisplayTicketConfigData;
   DataEditWindowController scheduleTicketConfigCtl = DataEditWindowController();
   late ScheduleRecord initialScheduleTicketConfigData;
   DataEditWindowController estimationTicketConfigCtl =
@@ -1321,11 +1322,11 @@ class _TicketCreationSectionState extends State<TicketCreationSection>
       // just close the window
       Navigator.of(context).pop();
     });
-    initialDisplayTicketConfigData = DisplayRecord(
+    initialDisplayTicketConfigData = DisplayTicketRecord(
       designatedDate: widget.initialDate,
     );
     initialScheduleTicketConfigData = ScheduleRecord(
-      registorationDate: widget.initialDate,
+      originDate: widget.initialDate,
     );
     initialEstimationTicketConfigData = EstimationRecord(
       startDate: widget.initialDate,

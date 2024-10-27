@@ -83,3 +83,8 @@
   - supplement ( TEXT )
   - scheduledAt ( DATE )
   - amount ( SIGNED INT )
+
+- FUTURE_TICKET_PREPARATION_STATE
+  - NO_SQL
+  - prepared_until ( DATE NOT NULL )
+  - prepared_at ( DATE NOT NULL )

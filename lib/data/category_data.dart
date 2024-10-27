@@ -7,30 +7,20 @@ class Category extends DTO {
   const Category({super.id, required this.name});
 
   static Future<Category> make(String name) async {
-    var ret = Category(name: name);
-    await ret.save();
-    return ret;
-  }
-
-  static Category saveInFuture(String name) {
-    var ret = Category(name: name);
-    ret.save();
-    return ret;
-  }
-
-  Future<void> save() async {
-    var categoryTable = await CategoryTable.use();
-    await categoryTable.save(this);
+    var categoryTable = await CategoryTable.use(null);
+    return categoryTable.make(name, null);
   }
 
   Future<void> integrateWith(Category other) async {
-    var categoryTable = await CategoryTable.use();
+    // mere wrapper. the actual integration is done in CategoryTable.integrate()
+    var categoryTable = await CategoryTable.use(null);
     await categoryTable.integrate(this, other);
   }
 
   Future<Category> rename(String newName) async {
     var ret = Category(id: id, name: newName);
-    await ret.save();
+    var categoryTable = await CategoryTable.use(null);
+    await categoryTable.save(ret, null);
     return ret;
   }
 }
@@ -39,11 +29,15 @@ class CategoryTable extends Table<Category> {
   @override
   covariant String tableName = 'Categories';
 
+  // <field name>
+  static const String nameField = 'name';
+  // </field name>
+
   // <constructor>
   CategoryTable._internal();
   static final CategoryTable _instance = CategoryTable._internal();
-  static Future<CategoryTable> use() async {
-    await _instance.ensureAvailability();
+  static Future<CategoryTable> use(Transaction? txn) async {
+    await _instance.ensureAvailability(txn);
     return _instance;
   }
 
@@ -68,26 +62,45 @@ class CategoryTable extends Table<Category> {
   ];
 
   @override
-  Future<void> prepare() async {
-    await Table.dbProvider.db.execute(makeTable([
+  Future<void> prepare(Transaction? txn) async {
+    if (txn == null) {
+      return Table.dbProvider.db.transaction((txn) async {
+        return prepare(txn);
+      });
+    }
+
+    await txn.execute(makeTable([
       makeIdField(),
-      makeTextField('name', notNull: true),
+      makeTextField(nameField, notNull: true),
     ]));
     // check if the table is empty
-    var queryResult =
-        await Table.dbProvider.db.rawQuery('SELECT COUNT(*) FROM $tableName');
+    var queryResult = await txn.rawQuery('SELECT COUNT(*) FROM $tableName');
     if (queryResult.first.values.first == 0) {
       // insert initial categories at once
-      await Table.dbProvider.db.execute('''
-        INSERT INTO $tableName (name) VALUES
+      await txn.execute('''
+        INSERT INTO $tableName ( $nameField ) VALUES
         ${initialCategories.map((cat) => "('$cat')").join(", ")}
       ''');
     }
   }
 
+  Future<Category> make(String name, Transaction? txn) async {
+    if (txn == null) {
+      return Table.dbProvider.db.transaction((txn) async {
+        return make(name, txn);
+      });
+    }
+
+    await ensureAvailability(txn);
+
+    var id = await txn.insert(tableName, {nameField: name});
+    return Category(id: id, name: name);
+  }
+
   @override
   Future<Category> interpret(Map<String, Object?> row, Transaction? txn) async {
-    return Category(id: row['id'] as int, name: row['name'] as String);
+    return Category(
+        id: row[Table.idField] as int, name: row[nameField] as String);
   }
 
   @override
@@ -95,7 +108,7 @@ class CategoryTable extends Table<Category> {
 
   @override
   Map<String, Object?> serialize(Category data) {
-    return {'name': data.name};
+    return {nameField: data.name};
   }
 
   /// although super class, [Table], provides delete method, it should not be used directly for this [CategoryTable].
@@ -111,15 +124,14 @@ class CategoryTable extends Table<Category> {
     if (replaced.id == null || replaceWith.id == null) {
       throw ArgumentError('phantom category cannot be integrated');
     }
-    await useTables(integrators, (db) async {
-      await db.transaction((txn) async {
-        await Future.wait([
-          for (var integrator in integrators)
-            integrator.replaceCategory(txn, replaced, replaceWith)
-        ]);
-        await txn.delete(tableName, where: 'id = ?', whereArgs: [replaced.id]);
-      });
-    });
+    await useTables(integrators, (txn) async {
+      await Future.wait([
+        for (var integrator in integrators)
+          integrator.replaceCategory(txn, replaced, replaceWith)
+      ]);
+      await txn.delete(tableName,
+          where: '${Table.idField} = ?', whereArgs: [replaced.id]);
+    }, null);
     return replaceWith.id!;
   }
 }
@@ -140,9 +152,9 @@ mixin HaveCategoryField<T extends DTO> on Table<T> {
 mixin CategoryLinker<Kv extends DTO, Vv extends DTO>
     on Linker<Kv, Vv>, HaveCategoryField<Link> {
   @override
-  Future<void> prepare() async {
+  Future<void> prepare(Transaction? txn) async {
     bindCategoryIntegrator();
-    await super.prepare();
+    await super.prepare(txn);
   }
 
   @override
@@ -151,8 +163,8 @@ mixin CategoryLinker<Kv extends DTO, Vv extends DTO>
     // duplicates will be eliminated at the point of selection by distinct option.
     await txn.execute('''
     UPDATE $tableName
-    SET valueId = ${replaceWith.id}
-    WHERE valueId = ${replaced.id};
+    SET ${Linker.valueIdField} = ${replaceWith.id}
+    WHERE ${Linker.valueIdField} = ${replaced.id};
     ''');
   }
 }
