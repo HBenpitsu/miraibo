@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import '../lib/data/database.dart';
+import 'package:miraibo/data/database.dart';
 
 void main() async {
   test('test of dbProvider', () async {
-    var dbProvider = DatabaseProvider();
+    var dbProvider = PersistentDatabaseProvider();
     await dbProvider.init();
     var db = dbProvider.db;
     await db.execute('''

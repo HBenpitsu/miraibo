@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'page/scheduling_page.dart';
-import 'page/ticket_page.dart';
-import 'page/data_page.dart';
-import 'page/utils_page.dart';
-import 'component/motion.dart';
+import 'package:miraibo/page/scheduling_page.dart';
+import 'package:miraibo/page/ticket_page.dart';
+import 'package:miraibo/page/data_page.dart';
+import 'package:miraibo/page/utils_page.dart';
+import 'package:miraibo/component/motion.dart';
 
 /* 
 This is the entry point of the application. 

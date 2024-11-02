@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:function_tree/function_tree.dart';
 
-import 'general_widget.dart';
+import 'package:miraibo/component/general_widget.dart';
 
 /* 
 This file defines a set of custom widgets that are mainly used in ticket config sections.

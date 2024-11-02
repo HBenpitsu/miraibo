@@ -1,9 +1,1 @@
-enum DayOfWeek {
-  sunday,
-  monday,
-  tuesday,
-  wednesday,
-  thursday,
-  friday,
-  saturday
-}
+enum Weekday { sunday, monday, tuesday, wednesday, thursday, friday, saturday }

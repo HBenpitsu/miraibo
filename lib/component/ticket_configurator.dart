@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:miraibo/component/category.dart';
 import 'package:miraibo/component/configurator_component.dart';
 import 'package:miraibo/data/handler.dart';
-import '../data/ticket_data.dart';
-import '../data/general_enum.dart';
-import 'general_widget.dart';
+import 'package:miraibo/data/ticket_data.dart';
+import 'package:miraibo/data/general_enum.dart';
+import 'package:miraibo/component/general_widget.dart';
 
 // <data edit modal window> a container of a configuration section
 /* 
@@ -471,8 +471,11 @@ class _ScheduleTicketConfiguraitonSectionState
     repeatSettingCtl = ScheduleTicketRepeatSettingSectorController(
       initialRepeatType: widget.initialConfigData.repeatType,
       initialRepeatInterval: widget.initialConfigData.repeatInterval,
-      initialRepeatDayOfWeek: widget.initialConfigData.repeatDayOfWeek,
-      initialMonthlyRepeatType: widget.initialConfigData.monthlyRepeatType,
+      initialRepeatDayOfWeek: widget.initialConfigData.repeatWeekdays,
+      initialMonthlyRepeatType:
+          widget.initialConfigData.monthlyRepeatHeadOriginOffset != null
+              ? MonthlyRepeatType.fromHead
+              : MonthlyRepeatType.fromTail,
       initialStartDate: widget.initialConfigData.startDate,
       initialEndDate: widget.initialConfigData.endDate,
     );
@@ -490,19 +493,24 @@ class _ScheduleTicketConfiguraitonSectionState
           context, 'Category unselected. Please select a category.');
       return;
     }
+    var selectedDate = registorationDateCtl.selected ?? DateTime.now();
+    var lastDayInMonth = DateTime(selectedDate.year, selectedDate.month + 1, 0);
     var configData = ScheduleRecord(
       category: categorySelectorCtl.selected!,
       supplement: supplementCtl.text,
-      originDate: registorationDateCtl.selected,
+      originDate: registorationDateCtl.selected ?? DateTime.now(),
       amount: moneyFormCtl.amount,
       repeatType: repeatSettingCtl.repeatType,
       repeatInterval: repeatSettingCtl.repeatInterval,
-      repeatDayOfWeek: repeatSettingCtl.repeatDayOfWeek,
-      monthlyRepeatType: repeatSettingCtl.monthlyRepeatType,
-      monthlyRepeatOffset: registorationDateCtl.selected == null
-          ? 0
-          : repeatSettingCtl
-              .monthlyRepeatOffset(registorationDateCtl.selected!),
+      repeatWeekdays: repeatSettingCtl.repeatDayOfWeek,
+      monthlyRepeatHeadOriginOffset:
+          repeatSettingCtl.monthlyRepeatType == MonthlyRepeatType.fromHead
+              ? Duration(days: selectedDate.day - 1)
+              : null,
+      monthlyRepeatTailOriginOffset:
+          repeatSettingCtl.monthlyRepeatType == MonthlyRepeatType.fromTail
+              ? Duration(days: lastDayInMonth.day - selectedDate.day)
+              : null,
       startDate: repeatSettingCtl.startDate,
       endDate: repeatSettingCtl.endDate,
     );
@@ -593,24 +601,24 @@ class ScheduleTicketRepeatSettingSectorController {
     _onChanged();
   }
 
-  final List<DayOfWeek> _repeatDayOfWeek;
-  List<DayOfWeek> get repeatDayOfWeek => _repeatDayOfWeek;
-  bool dayOfWeekSelected(DayOfWeek day) => _repeatDayOfWeek.contains(day);
-  void turnOnDayOfWeek(DayOfWeek day) {
+  final List<Weekday> _repeatDayOfWeek;
+  List<Weekday> get repeatDayOfWeek => _repeatDayOfWeek;
+  bool dayOfWeekSelected(Weekday day) => _repeatDayOfWeek.contains(day);
+  void turnOnDayOfWeek(Weekday day) {
     if (!_repeatDayOfWeek.contains(day)) {
       _repeatDayOfWeek.add(day);
       _onChanged();
     }
   }
 
-  void turnOffDayOfWeek(DayOfWeek day) {
+  void turnOffDayOfWeek(Weekday day) {
     if (_repeatDayOfWeek.contains(day)) {
       _repeatDayOfWeek.remove(day);
       _onChanged();
     }
   }
 
-  void toggleDayOfWeek(DayOfWeek day) {
+  void toggleDayOfWeek(Weekday day) {
     if (_repeatDayOfWeek.contains(day)) {
       _repeatDayOfWeek.remove(day);
     } else {
@@ -650,16 +658,6 @@ class ScheduleTicketRepeatSettingSectorController {
     _onChanged();
   }
 
-  int monthlyRepeatOffset(DateTime date) {
-    switch (_monthlyRepeatType) {
-      case MonthlyRepeatType.fromHead:
-        return date.day - 1;
-      case MonthlyRepeatType.fromTail:
-        var lastDayInMonth = DateTime(date.year, date.month + 1, 0);
-        return lastDayInMonth.day - date.day;
-    }
-  }
-
   void Function()? onChanged;
   void _onChanged() {
     if (onChanged != null) {
@@ -670,7 +668,7 @@ class ScheduleTicketRepeatSettingSectorController {
   ScheduleTicketRepeatSettingSectorController({
     RepeatType initialRepeatType = RepeatType.no,
     Duration initialRepeatInterval = const Duration(days: 1),
-    List<DayOfWeek> initialRepeatDayOfWeek = const [],
+    List<Weekday> initialRepeatDayOfWeek = const [],
     MonthlyRepeatType initialMonthlyRepeatType = MonthlyRepeatType.fromHead,
     DateTime? initialStartDate,
     DateTime? initialEndDate,
@@ -764,26 +762,26 @@ class _ScheduleTicketRepeatSettingSectorState
     ]);
   }
 
-  String dayOfWeekLabel(DayOfWeek day) {
+  String dayOfWeekLabel(Weekday day) {
     switch (day) {
-      case DayOfWeek.sunday:
+      case Weekday.sunday:
         return 'Sun';
-      case DayOfWeek.monday:
+      case Weekday.monday:
         return 'Mon';
-      case DayOfWeek.tuesday:
+      case Weekday.tuesday:
         return 'Tue';
-      case DayOfWeek.wednesday:
+      case Weekday.wednesday:
         return 'Wed';
-      case DayOfWeek.thursday:
+      case Weekday.thursday:
         return 'Thu';
-      case DayOfWeek.friday:
+      case Weekday.friday:
         return 'Fri';
-      case DayOfWeek.saturday:
+      case Weekday.saturday:
         return 'Sat';
     }
   }
 
-  Widget weekDayIconButton(BuildContext context, DayOfWeek day) {
+  Widget weekDayIconButton(BuildContext context, Weekday day) {
     return IconButton(
         onPressed: () {
           setState(() {
@@ -812,7 +810,7 @@ class _ScheduleTicketRepeatSettingSectorState
         padding: const EdgeInsets.all(5),
         child: Wrap(
           children: [
-            ...DayOfWeek.values.map((day) {
+            ...Weekday.values.map((day) {
               return Padding(
                   padding: const EdgeInsets.all(2),
                   child: weekDayIconButton(context, day));
@@ -1205,7 +1203,7 @@ class _LogTicketConfigurationSectionWithPresetState
     });
     // </bypass the event>
     logTicketConfigData = widget.initialConfigData;
-    fPresets = TicketDataManager().fetchLogTicketPresets(nPreset);
+    fPresets = TicketDataFetcher().fetchLogTicketPresets(nPreset);
   }
 
   void applyPreset(LogRecord data) {

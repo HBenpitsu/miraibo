@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:miraibo/component/ticket_configurator.dart';
 
-import '../component/motion.dart';
-import '../component/ticket.dart';
-import '../data/handler.dart';
-import '../data/ticket_data.dart';
+import 'package:miraibo/component/motion.dart';
+import 'package:miraibo/component/ticket.dart';
+import 'package:miraibo/data/handler.dart';
+import 'package:miraibo/data/ticket_data.dart';
 
 /* 
 SchedulingPage has two screens: MonthlyScreen and DailyScreen
@@ -436,7 +436,7 @@ class DateButton extends StatelessWidget {
         date: date,
         setShownDate: setShownDate,
         switchToDailyScreen: switchToDailyScreen,
-        style: await TicketDataManager().calcStyleForDateButton(date));
+        style: await TicketDataFetcher().calcStyleForDateButton(date));
   }
 
   const DateButton({
@@ -780,7 +780,7 @@ class TicketContainer extends StatelessWidget {
     return ListView(
       children: [
         for (var ticketConfig
-            in await TicketDataManager().fetchTicketConfigsFor(forThisDate))
+            in await TicketDataFetcher().fetchTicketConfigsFor(forThisDate))
           switch (ticketConfig) {
             DisplayTicketRecord() => DisplayTicket(
                 onPressed: () {

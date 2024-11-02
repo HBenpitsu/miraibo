@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import '../component/category.dart';
+import 'package:miraibo/component/category.dart';
 
 class UtilsPage extends StatefulWidget {
   const UtilsPage({super.key});

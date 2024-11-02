@@ -5,16 +5,29 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-class DatabaseProvider {
+abstract class DatabaseProvider {
+  Database? _database;
+  Future<void> init();
+  Future<void> ensureAvailability() async {
+    if (_database == null) {
+      await init();
+    }
+  }
+
+  Future<void> clear();
+  Database get db => _database!;
+}
+
+class PersistentDatabaseProvider extends DatabaseProvider {
   // Singleton
   static final String dbName = 'miraibo.db';
 
-  DatabaseProvider._internal();
-  static final DatabaseProvider _instance = DatabaseProvider._internal();
-  factory DatabaseProvider() => _instance;
+  PersistentDatabaseProvider._internal();
+  static final PersistentDatabaseProvider _instance =
+      PersistentDatabaseProvider._internal();
+  factory PersistentDatabaseProvider() => _instance;
 
-  Database? _database;
-
+  @override
   Future<void> init() async {
     if (!kIsWeb && (Platform.isLinux || Platform.isWindows)) {
       sqfliteFfiInit();
@@ -25,19 +38,36 @@ class DatabaseProvider {
     _database ??= await openDatabase(dbName);
   }
 
-  Future<void> ensureAvailability() async {
-    if (_database == null) {
-      await init();
-    }
-  }
-
-  Database get db => _database!;
-
+  @override
   Future<void> clear() async {
     await ensureAvailability();
     await _database!.close();
     File file = File(_database!.path);
-    file.deleteSync();
+    await file.delete();
+  }
+}
+
+class InmemoryDatabaseProvider extends DatabaseProvider {
+  InmemoryDatabaseProvider._internal();
+  static final InmemoryDatabaseProvider _instance =
+      InmemoryDatabaseProvider._internal();
+  factory InmemoryDatabaseProvider() => _instance;
+
+  @override
+  Future<void> init() async {
+    if (!kIsWeb && (Platform.isLinux || Platform.isWindows)) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    } else if (kIsWeb) {
+      databaseFactory = databaseFactoryFfiWeb;
+    }
+    _database ??= await openDatabase(inMemoryDatabasePath);
+  }
+
+  @override
+  Future<void> clear() async {
+    await ensureAvailability();
+    await _database!.close();
   }
 }
 
@@ -82,7 +112,7 @@ abstract class Table<T extends DTO> {
 
   // <initialization>
   abstract String tableName;
-  static final DatabaseProvider dbProvider = DatabaseProvider();
+  abstract final DatabaseProvider dbProvider;
 
   bool prepared = false;
 
@@ -90,7 +120,7 @@ abstract class Table<T extends DTO> {
   Future<void> prepare(Transaction? txn);
   Future<void> ensureAvailability(Transaction? txn) async {
     if (!prepared) {
-      await Table.dbProvider.ensureAvailability();
+      await dbProvider.ensureAvailability();
       await prepare(txn);
       prepared = true;
     }
@@ -123,6 +153,8 @@ abstract class Table<T extends DTO> {
 
   String makeIntegerField(String name, {bool notNull = false}) =>
       "$name INTEGER${notNull ? ' NOT NULL' : ''}";
+  String makeRealField(String name, {bool notNull = false}) =>
+      "$name REAL${notNull ? ' NOT NULL' : ''}";
   String makeIdField({String? name}) =>
       "${name ?? idField} INTEGER PRIMARY KEY AUTOINCREMENT";
   String makeTEXTKeyField(String name) => "$name TEXT PRIMARY KEY";
@@ -150,6 +182,10 @@ abstract class Table<T extends DTO> {
       ? null
       : DateTime.fromMillisecondsSinceEpoch(
           secondsSinceEpoch * 1000); // convert sec to millisec
+
+  int? durationToInt(Duration? duration) => duration?.inSeconds;
+  Duration? intToDuration(int? seconds) =>
+      seconds == null ? null : Duration(seconds: seconds);
   // </(de)serializer>
 
   // <basic methods>
@@ -168,7 +204,7 @@ abstract class Table<T extends DTO> {
   Future<void> link(Transaction txn, T data, {int? id}) async {}
 
   /// If there is some table that should be modified when the record is deleted (such as LinkerTable), override this method.
-  Future<void> unlink(Transaction txn, T data) async {}
+  Future<void> unlink(Transaction txn, int id) async {}
   // </linking handlers>
 
   // <operations>
@@ -178,8 +214,6 @@ abstract class Table<T extends DTO> {
         return fetchAll(txn);
       });
     }
-
-    await ensureAvailability(txn);
 
     return [
       for (var row in await txn.query(tableName)) await interpret(row, txn)
@@ -195,8 +229,6 @@ abstract class Table<T extends DTO> {
       });
     }
 
-    await ensureAvailability(txn);
-
     var result =
         await txn.query(tableName, where: '$idField = ?', whereArgs: [id]);
     if (result.isEmpty) return null;
@@ -210,13 +242,22 @@ abstract class Table<T extends DTO> {
       });
     }
 
-    await ensureAvailability(txn);
-
     return [
       for (var row in await txn.query(tableName,
           where: '$idField IN (${ids.join(', ')})'))
         await interpret(row, txn)
     ];
+  }
+
+  Future<int> recordsCount(Transaction? txn) async {
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return recordsCount(txn);
+      });
+    }
+
+    var result = await txn.rawQuery('SELECT COUNT(*) FROM $tableName');
+    return result.first.values.first as int;
   }
 
   Future<int> insert(T data, Transaction? txn) async {
@@ -225,8 +266,6 @@ abstract class Table<T extends DTO> {
         return insert(data, txn);
       });
     }
-
-    await ensureAvailability(txn);
 
     validate(data);
     if (data.id != null) {
@@ -245,8 +284,6 @@ abstract class Table<T extends DTO> {
       });
     }
 
-    await ensureAvailability(txn);
-
     validate(data);
     if (data.id == null) {
       throw IlligalUsageException('tried to update data without id');
@@ -257,24 +294,15 @@ abstract class Table<T extends DTO> {
     return id;
   }
 
-  // TODO: whole data is unnecessary. only id is enough.
-  Future<int> delete(T data, Transaction? txn) async {
+  Future<int> delete(int id, Transaction? txn) async {
     if (txn == null) {
       return dbProvider.db.transaction((txn) async {
-        return delete(data, txn);
+        return delete(id, txn);
       });
     }
 
-    // TODO: calling ensureAvailability is redundant. check if it is really necessary.
-    await ensureAvailability(txn);
-
-    validate(data);
-    if (data.id == null) {
-      throw IlligalUsageException('tried to delete data without id');
-    }
-    var id = await txn
-        .delete(tableName, where: '$idField = ?', whereArgs: [data.id]);
-    await unlink(txn, data);
+    await txn.delete(tableName, where: '$idField = ?', whereArgs: [id]);
+    await unlink(txn, id);
     return id;
   }
 
@@ -286,13 +314,6 @@ abstract class Table<T extends DTO> {
     }
   }
   // </operations>
-
-  // <helper/>
-  Future<void> query(
-      Future<void> Function(Transaction txn, String tableName) query) async {
-    await ensureAvailability(null);
-    await dbProvider.db.transaction((txn) => query(txn, tableName));
-  }
 }
 
 class Link extends DTO {
@@ -310,12 +331,10 @@ mixin Linker<Kv extends DTO, Vv extends DTO> on Table<Link> {
 
   Future<List<Vv>> fetchValues(int keyId, Transaction? txn) async {
     if (txn == null) {
-      return Table.dbProvider.db.transaction((txn) async {
+      return dbProvider.db.transaction((txn) async {
         return fetchValues(keyId, txn);
       });
     }
-
-    await ensureAvailability(txn);
 
     // In terms of performance, it is better to use a single query to fetch all values. (instead of calling [fetchValuesByIds])
     // However, it is not possible to know what table should be queried for abstract [Linker]-mixin.
@@ -338,12 +357,10 @@ mixin Linker<Kv extends DTO, Vv extends DTO> on Table<Link> {
 
   Future<void> linkValues(int keyId, List<Vv> values, Transaction? txn) async {
     if (txn == null) {
-      return Table.dbProvider.db.transaction((txn) async {
+      return dbProvider.db.transaction((txn) async {
         return linkValues(keyId, values, txn);
       });
     }
-
-    await ensureAvailability(txn);
 
     await txn.delete(tableName, where: '$keyIdField = ?', whereArgs: [keyId]);
     if (values.isEmpty) return;
@@ -360,7 +377,7 @@ mixin Linker<Kv extends DTO, Vv extends DTO> on Table<Link> {
   @override
   Future<void> prepare(Transaction? txn) async {
     if (txn == null) {
-      return Table.dbProvider.db.transaction((txn) async {
+      return dbProvider.db.transaction((txn) async {
         return prepare(txn);
       });
     }
@@ -418,16 +435,3 @@ class IlligalUsageException implements Exception {
 }
 // </user exception>
 
-// <helper>
-Future<void> useTables(List<Table> tables,
-    Future<void> Function(Transaction txn) query, Transaction? txn) async {
-  if (txn == null) {
-    return Table.dbProvider.db.transaction((txn) async {
-      return useTables(tables, query, txn);
-    });
-  }
-
-  await Future.wait(tables.map((table) => table.ensureAvailability(txn)));
-  await query(txn);
-}
-// </helper>

@@ -71,14 +71,10 @@
   - keyId ( ESTIMATIONS/id )
   - valueId ( CATEGORIES/id )
 
-- FUTURE_TICKET_FACTORIES
+- FUTURE_TICKETS
   - id ( PRIMAL INT )
   - schedule ( NULLABLE SCHEDULES/id )
   - estimation ( NULLABLE ESTIMATIONS/id )
-
-- FUTURE_TICKETS
-  - id ( PRIMAL INT )
-  - factory ( FUTURE_TICKET_FACTORIES/id )
   - category ( CATEGORIES/id )
   - supplement ( TEXT )
   - scheduledAt ( DATE )

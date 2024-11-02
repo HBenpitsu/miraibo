@@ -1,5 +1,5 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'database.dart';
+import 'package:miraibo/data/database.dart';
 
 class Category extends DTO {
   final String name;
@@ -14,7 +14,7 @@ class Category extends DTO {
   Future<void> integrateWith(Category other) async {
     // mere wrapper. the actual integration is done in CategoryTable.integrate()
     var categoryTable = await CategoryTable.use(null);
-    await categoryTable.integrate(this, other);
+    await categoryTable.integrate(this, other, null);
   }
 
   Future<Category> rename(String newName) async {
@@ -28,6 +28,8 @@ class Category extends DTO {
 class CategoryTable extends Table<Category> {
   @override
   covariant String tableName = 'Categories';
+  @override
+  covariant DatabaseProvider dbProvider = PersistentDatabaseProvider();
 
   // <field name>
   static const String nameField = 'name';
@@ -52,19 +54,21 @@ class CategoryTable extends Table<Category> {
     'Transportation',
     'EducationFee',
     'EducationMaterials',
+    'Medication',
     'Amusument',
     'Furniture',
     'Necessities',
     'OtherExpense',
     'Scholarship',
     'Payment',
+    'OtherIncome',
     'Ajustment',
   ];
 
   @override
   Future<void> prepare(Transaction? txn) async {
     if (txn == null) {
-      return Table.dbProvider.db.transaction((txn) async {
+      return PersistentDatabaseProvider().db.transaction((txn) async {
         return prepare(txn);
       });
     }
@@ -86,12 +90,10 @@ class CategoryTable extends Table<Category> {
 
   Future<Category> make(String name, Transaction? txn) async {
     if (txn == null) {
-      return Table.dbProvider.db.transaction((txn) async {
+      return PersistentDatabaseProvider().db.transaction((txn) async {
         return make(name, txn);
       });
     }
-
-    await ensureAvailability(txn);
 
     var id = await txn.insert(tableName, {nameField: name});
     return Category(id: id, name: name);
@@ -113,25 +115,35 @@ class CategoryTable extends Table<Category> {
 
   /// although super class, [Table], provides delete method, it should not be used directly for this [CategoryTable].
   @override
-  Future<int> delete(Category data, Transaction? txn) {
+  Future<int> delete(int id, Transaction? txn) {
     throw ShouldNotBeCalledException(
         'category should not be deleted directly. instead, use [CategoryTable.integrate()]');
   }
 
   List<HaveCategoryField> integrators = [];
 
-  Future<int> integrate(Category replaced, Category replaceWith) async {
+  Future<int> integrate(
+      Category replaced, Category replaceWith, Transaction? txn) async {
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return integrate(replaced, replaceWith, txn);
+      });
+    }
+
     if (replaced.id == null || replaceWith.id == null) {
       throw ArgumentError('phantom category cannot be integrated');
     }
-    await useTables(integrators, (txn) async {
-      await Future.wait([
-        for (var integrator in integrators)
-          integrator.replaceCategory(txn, replaced, replaceWith)
-      ]);
-      await txn.delete(tableName,
-          where: '${Table.idField} = ?', whereArgs: [replaced.id]);
-    }, null);
+
+    await Future.wait([
+      for (var integrator in integrators)
+        integrator.ensureAvailability(txn).then((_) {
+          integrator.replaceCategory(txn, replaced, replaceWith);
+        })
+    ]);
+
+    await txn.delete(tableName,
+        where: '${Table.idField} = ?', whereArgs: [replaced.id]);
+
     return replaceWith.id!;
   }
 }

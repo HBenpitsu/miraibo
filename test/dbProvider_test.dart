@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import '../lib/data/database.dart';
+import 'package:miraibo/data/database.dart';
 
 Future<void> resetDB() async {
-  DatabaseProvider dbProvider = DatabaseProvider();
+  PersistentDatabaseProvider dbProvider = PersistentDatabaseProvider();
   await dbProvider.clear();
 }
 

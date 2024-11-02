@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'category_data.dart';
-import './database.dart';
-import './future_ticket_data.dart';
-import './general_enum.dart';
+import 'package:miraibo/data/category_data.dart';
+import 'package:miraibo/data/database.dart';
+import 'package:miraibo/data/future_ticket_data.dart';
+import 'package:miraibo/data/general_enum.dart';
+
+import 'package:miraibo/background_worker/future_ticket_preparation.dart';
 
 /* 
 This file contains the data classes that define the structure of the data / repository of the data, 
@@ -88,7 +90,8 @@ class DisplayTicketRecord extends TicketConfigRecord {
   @override
   Future<void> delete() async {
     var table = await DisplayTicketTable.use(null);
-    await table.delete(this, null);
+    if (id == null) return;
+    await table.delete(id!, null);
   }
 }
 // </DTO>
@@ -97,6 +100,8 @@ class DisplayTicketRecord extends TicketConfigRecord {
 class DisplayTicketTable extends Table<DisplayTicketRecord> with TicketTable {
   @override
   covariant String tableName = 'DisplayTickets';
+  @override
+  covariant DatabaseProvider dbProvider = PersistentDatabaseProvider();
 
   // <field names>
   static const String periodInDaysField = 'period_in_days';
@@ -118,7 +123,7 @@ class DisplayTicketTable extends Table<DisplayTicketRecord> with TicketTable {
   @override
   Future<void> prepare(Transaction? txn) async {
     if (txn == null) {
-      return Table.dbProvider.db.transaction((txn) async {
+      return dbProvider.db.transaction((txn) async {
         return prepare(txn);
       });
     }
@@ -177,12 +182,9 @@ class DisplayTicketTable extends Table<DisplayTicketRecord> with TicketTable {
   }
 
   @override
-  Future<void> unlink(Transaction txn, DisplayTicketRecord data) async {
+  Future<void> unlink(Transaction txn, int id) async {
     var linker = await DisplayTicketTargetCategoryLinker.use(txn);
-    if (data.id == null) {
-      throw IlligalUsageException('Tried to unlink with null id');
-    }
-    await linker.linkValues(data.id!, const [], txn);
+    await linker.linkValues(id, const [], txn);
   }
 
   @override
@@ -258,12 +260,11 @@ class DisplayTicketTable extends Table<DisplayTicketRecord> with TicketTable {
   Future<List<DisplayTicketRecord>> fetchTicketsRegisteredAt(
       DateTime date, Transaction? txn) async {
     if (txn == null) {
-      return Table.dbProvider.db.transaction((txn) async {
+      return dbProvider.db.transaction((txn) async {
         return fetchTicketsRegisteredAt(date, txn);
       });
     }
 
-    await ensureAvailability(txn);
     var result = await txn.rawQuery('''
       SELECT * FROM $tableName
       WHERE DATE( $limitDateField ) <= DATE( ${dateToInt(date)} ) OR $limitDateField IS NULL
@@ -280,6 +281,8 @@ class DisplayTicketTargetCategoryLinker extends Table<Link>
         CategoryLinker {
   @override
   covariant String tableName = 'DisplayTicketTargetCategoryLinker';
+  @override
+  covariant DatabaseProvider dbProvider = PersistentDatabaseProvider();
   @override
   final keyTable = DisplayTicketTable.ref();
   @override
@@ -322,9 +325,9 @@ class ScheduleRecord extends TicketConfigRecord with FutureTicketFactory {
   final int amount;
   final RepeatType repeatType;
   final Duration repeatInterval;
-  final List<DayOfWeek> repeatDayOfWeek;
-  final MonthlyRepeatType monthlyRepeatType;
-  final int monthlyRepeatOffset;
+  final List<Weekday> repeatWeekdays;
+  final Duration? monthlyRepeatHeadOriginOffset;
+  final Duration? monthlyRepeatTailOriginOffset;
   final DateTime? startDate;
   final DateTime? endDate;
 
@@ -336,9 +339,9 @@ class ScheduleRecord extends TicketConfigRecord with FutureTicketFactory {
     this.amount = 0,
     this.repeatType = RepeatType.no,
     this.repeatInterval = const Duration(days: 1),
-    this.repeatDayOfWeek = const [],
-    this.monthlyRepeatType = MonthlyRepeatType.fromHead,
-    this.monthlyRepeatOffset = 0,
+    this.repeatWeekdays = const [],
+    this.monthlyRepeatHeadOriginOffset = const Duration(days: 0),
+    this.monthlyRepeatTailOriginOffset,
     this.startDate,
     this.endDate,
   });
@@ -352,7 +355,17 @@ class ScheduleRecord extends TicketConfigRecord with FutureTicketFactory {
   @override
   Future<void> delete() async {
     var table = await ScheduleTable.use(null);
-    await table.delete(this, null);
+    if (id == null) return;
+    await table.delete(id!, null);
+  }
+
+  LogRecord toLogPreset() {
+    return LogRecord(
+      category: category,
+      supplement: supplement,
+      registorationDate: originDate,
+      amount: amount,
+    );
   }
 }
 // </DTO>
@@ -361,6 +374,8 @@ class ScheduleRecord extends TicketConfigRecord with FutureTicketFactory {
 class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
   @override
   covariant String tableName = 'Schedules';
+  @override
+  covariant DatabaseProvider dbProvider = PersistentDatabaseProvider();
 
   // <field names>
   static const String supplementField = 'supplement';
@@ -369,14 +384,14 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
   static const String originDateField = 'origin_date';
   static const String repeatTypeField = 'repeat_type';
   static const String repeatIntervalField = 'repeat_option_interval_in_days';
-  static const Map<DayOfWeek, String> repeatOnDay = {
-    DayOfWeek.sunday: 'repeat_option_on_Sunday',
-    DayOfWeek.monday: 'repeat_option_on_Monday',
-    DayOfWeek.tuesday: 'repeat_option_on_Tuesday',
-    DayOfWeek.wednesday: 'repeat_option_on_Wednesday',
-    DayOfWeek.thursday: 'repeat_option_on_Thursday',
-    DayOfWeek.friday: 'repeat_option_on_Friday',
-    DayOfWeek.saturday: 'repeat_option_on_Saturday',
+  static const Map<Weekday, String> repeatOnDay = {
+    Weekday.sunday: 'repeat_option_on_Sunday',
+    Weekday.monday: 'repeat_option_on_Monday',
+    Weekday.tuesday: 'repeat_option_on_Tuesday',
+    Weekday.wednesday: 'repeat_option_on_Wednesday',
+    Weekday.thursday: 'repeat_option_on_Thursday',
+    Weekday.friday: 'repeat_option_on_Friday',
+    Weekday.saturday: 'repeat_option_on_Saturday',
   };
   static const String monthlyRepeatHeadOriginField =
       'repeat_option_monthly_head_origin_in_days';
@@ -410,7 +425,7 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
   @override
   Future<void> prepare(Transaction? txn) async {
     if (txn == null) {
-      return Table.dbProvider.db.transaction((txn) async {
+      return dbProvider.db.transaction((txn) async {
         return prepare(txn);
       });
     }
@@ -425,13 +440,13 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
       makeDateField(originDateField, notNull: true),
       makeEnumField(repeatTypeField, RepeatType.values),
       makeIntegerField(repeatIntervalField, notNull: true),
-      makeBooleanField(repeatOnDay[DayOfWeek.sunday]!),
-      makeBooleanField(repeatOnDay[DayOfWeek.monday]!),
-      makeBooleanField(repeatOnDay[DayOfWeek.tuesday]!),
-      makeBooleanField(repeatOnDay[DayOfWeek.wednesday]!),
-      makeBooleanField(repeatOnDay[DayOfWeek.thursday]!),
-      makeBooleanField(repeatOnDay[DayOfWeek.friday]!),
-      makeBooleanField(repeatOnDay[DayOfWeek.saturday]!),
+      makeBooleanField(repeatOnDay[Weekday.sunday]!),
+      makeBooleanField(repeatOnDay[Weekday.monday]!),
+      makeBooleanField(repeatOnDay[Weekday.tuesday]!),
+      makeBooleanField(repeatOnDay[Weekday.wednesday]!),
+      makeBooleanField(repeatOnDay[Weekday.thursday]!),
+      makeBooleanField(repeatOnDay[Weekday.friday]!),
+      makeBooleanField(repeatOnDay[Weekday.saturday]!),
       makeIntegerField(monthlyRepeatHeadOriginField),
       makeIntegerField(monthlyRepeatTailOriginField),
       makeDateField(periodBeginField),
@@ -443,8 +458,6 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
   Future<ScheduleRecord> interpret(
       Map<String, Object?> row, Transaction? txn) async {
     var categories = await CategoryTable.use(txn);
-    var monthlyRepeatOffset = row[monthlyRepeatHeadOriginField] as int?;
-    monthlyRepeatOffset ??= row[monthlyRepeatTailOriginField] as int?;
     return ScheduleRecord(
       id: row[Table.idField] as int,
       category: await categories.fetchById(row[categoryField] as int, txn),
@@ -453,19 +466,19 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
       originDate: intToDate(row[originDateField] as int)!,
       repeatType: RepeatType.values[row[repeatTypeField] as int],
       repeatInterval: Duration(days: row[repeatIntervalField] as int),
-      repeatDayOfWeek: [
-        if (row[repeatOnDay[DayOfWeek.sunday]!] == 1) DayOfWeek.sunday,
-        if (row[repeatOnDay[DayOfWeek.monday]!] == 1) DayOfWeek.monday,
-        if (row[repeatOnDay[DayOfWeek.tuesday]!] == 1) DayOfWeek.tuesday,
-        if (row[repeatOnDay[DayOfWeek.wednesday]!] == 1) DayOfWeek.wednesday,
-        if (row[repeatOnDay[DayOfWeek.thursday]!] == 1) DayOfWeek.thursday,
-        if (row[repeatOnDay[DayOfWeek.friday]!] == 1) DayOfWeek.friday,
-        if (row[repeatOnDay[DayOfWeek.saturday]!] == 1) DayOfWeek.saturday,
+      repeatWeekdays: [
+        if (row[repeatOnDay[Weekday.sunday]!] == 1) Weekday.sunday,
+        if (row[repeatOnDay[Weekday.monday]!] == 1) Weekday.monday,
+        if (row[repeatOnDay[Weekday.tuesday]!] == 1) Weekday.tuesday,
+        if (row[repeatOnDay[Weekday.wednesday]!] == 1) Weekday.wednesday,
+        if (row[repeatOnDay[Weekday.thursday]!] == 1) Weekday.thursday,
+        if (row[repeatOnDay[Weekday.friday]!] == 1) Weekday.friday,
+        if (row[repeatOnDay[Weekday.saturday]!] == 1) Weekday.saturday,
       ],
-      monthlyRepeatType: row[monthlyRepeatHeadOriginField] != null
-          ? MonthlyRepeatType.fromHead
-          : MonthlyRepeatType.fromTail,
-      monthlyRepeatOffset: monthlyRepeatOffset ?? 0,
+      monthlyRepeatHeadOriginOffset:
+          intToDuration(row[monthlyRepeatHeadOriginField] as int?),
+      monthlyRepeatTailOriginOffset:
+          intToDuration(row[monthlyRepeatTailOriginField] as int?),
       startDate: intToDate(row[periodBeginField] as int?),
       endDate: intToDate(row[periodEndField] as int?),
     );
@@ -475,7 +488,17 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
   void validate(ScheduleRecord data) {
     if (data.category == null || data.originDate == null) {
       throw InvalidDataException(
-          'category and registorationDate must not be null');
+          'category and registorationDate of saved schedule ticket must not be null');
+    }
+    if (data.monthlyRepeatHeadOriginOffset == null &&
+        data.monthlyRepeatTailOriginOffset == null) {
+      throw InvalidDataException(
+          'Both head origin and tail origin offset are null.');
+    }
+    if (data.monthlyRepeatHeadOriginOffset != null &&
+        data.monthlyRepeatTailOriginOffset != null) {
+      throw InvalidDataException(
+          'Both head origin and tail origin offset are set.');
     }
   }
 
@@ -488,28 +511,24 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
       originDateField: dateToInt(data.originDate)!,
       repeatTypeField: data.repeatType.index,
       repeatIntervalField: data.repeatInterval.inDays,
-      repeatOnDay[DayOfWeek.sunday]!:
-          data.repeatDayOfWeek.contains(DayOfWeek.sunday) ? 1 : 0,
-      repeatOnDay[DayOfWeek.monday]!:
-          data.repeatDayOfWeek.contains(DayOfWeek.monday) ? 1 : 0,
-      repeatOnDay[DayOfWeek.tuesday]!:
-          data.repeatDayOfWeek.contains(DayOfWeek.tuesday) ? 1 : 0,
-      repeatOnDay[DayOfWeek.wednesday]!:
-          data.repeatDayOfWeek.contains(DayOfWeek.wednesday) ? 1 : 0,
-      repeatOnDay[DayOfWeek.thursday]!:
-          data.repeatDayOfWeek.contains(DayOfWeek.thursday) ? 1 : 0,
-      repeatOnDay[DayOfWeek.friday]!:
-          data.repeatDayOfWeek.contains(DayOfWeek.friday) ? 1 : 0,
-      repeatOnDay[DayOfWeek.saturday]!:
-          data.repeatDayOfWeek.contains(DayOfWeek.sunday) ? 1 : 0,
+      repeatOnDay[Weekday.sunday]!:
+          data.repeatWeekdays.contains(Weekday.sunday) ? 1 : 0,
+      repeatOnDay[Weekday.monday]!:
+          data.repeatWeekdays.contains(Weekday.monday) ? 1 : 0,
+      repeatOnDay[Weekday.tuesday]!:
+          data.repeatWeekdays.contains(Weekday.tuesday) ? 1 : 0,
+      repeatOnDay[Weekday.wednesday]!:
+          data.repeatWeekdays.contains(Weekday.wednesday) ? 1 : 0,
+      repeatOnDay[Weekday.thursday]!:
+          data.repeatWeekdays.contains(Weekday.thursday) ? 1 : 0,
+      repeatOnDay[Weekday.friday]!:
+          data.repeatWeekdays.contains(Weekday.friday) ? 1 : 0,
+      repeatOnDay[Weekday.saturday]!:
+          data.repeatWeekdays.contains(Weekday.sunday) ? 1 : 0,
       monthlyRepeatHeadOriginField:
-          data.monthlyRepeatType == MonthlyRepeatType.fromHead
-              ? data.monthlyRepeatOffset
-              : null,
+          durationToInt(data.monthlyRepeatHeadOriginOffset),
       monthlyRepeatTailOriginField:
-          data.monthlyRepeatType == MonthlyRepeatType.fromTail
-              ? data.monthlyRepeatOffset
-              : null,
+          durationToInt(data.monthlyRepeatTailOriginOffset),
       periodBeginField: dateToInt(data.startDate),
       periodEndField: dateToInt(data.endDate),
     };
@@ -518,28 +537,21 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
   // <linking handler>
   @override
   Future<void> link(Transaction txn, ScheduleRecord data, {int? id}) async {
-    var futureTicketFactoryTable =
-        await FutureTicketFactoryAbstractorTable.use(txn);
     id ??= data.id;
     if (id == null) {
       throw IlligalUsageException('Tried to link with null id');
     }
-    await futureTicketFactoryTable.onFactoryUpdated(data, txn);
+    await FutureTicketPreparationEventHandler().onFactoryUpdated(data, txn);
   }
 
   @override
-  Future<void> unlink(Transaction txn, ScheduleRecord data) async {
-    var futureTicketFactoryTable =
-        await FutureTicketFactoryAbstractorTable.use(txn);
-    if (data.id == null) {
-      throw IlligalUsageException('Tried to unlink with null id');
-    }
-    await futureTicketFactoryTable.onFactoryDeleted(data, txn);
+  Future<void> unlink(Transaction txn, int id) async {
+    await FutureTicketPreparationEventHandler()
+        .onFactoryDeleted(id, ScheduleTable.ref(), txn);
   }
 
   @override
   Future<void> clear() {
-    FutureTicketFactoryAbstractorTable.ref().clear();
     FutureTicketTable.ref().clear();
     return super.clear();
   }
@@ -575,7 +587,8 @@ class EstimationRecord extends TicketConfigRecord with FutureTicketFactory {
   @override
   Future<void> delete() async {
     var table = await EstimationTable.use(null);
-    await table.delete(this, null);
+    if (id == null) return;
+    await table.delete(id!, null);
   }
 
   const EstimationRecord(
@@ -592,6 +605,8 @@ class EstimationRecord extends TicketConfigRecord with FutureTicketFactory {
 class EstimationTable extends Table<EstimationRecord> {
   @override
   covariant String tableName = 'Estimations';
+  @override
+  covariant DatabaseProvider dbProvider = PersistentDatabaseProvider();
 
   // <field names>
   static const String periodBeginField = 'period_option_begin_from';
@@ -614,7 +629,7 @@ class EstimationTable extends Table<EstimationRecord> {
   @override
   Future<void> prepare(Transaction? txn) async {
     if (txn == null) {
-      return Table.dbProvider.db.transaction((txn) async {
+      return dbProvider.db.transaction((txn) async {
         return prepare(txn);
       });
     }
@@ -664,8 +679,6 @@ class EstimationTable extends Table<EstimationRecord> {
   Future<void> link(Transaction txn, EstimationRecord data, {int? id}) async {
     // Because following lines are not heavy, execute them in sequence (to simplify).
     var linker = await EstimationTargetCategoryLinker.use(txn);
-    var futureTicketFactoryTable =
-        await FutureTicketFactoryAbstractorTable.use(txn);
 
     id ??= data.id;
     if (id == null) {
@@ -679,30 +692,24 @@ class EstimationTable extends Table<EstimationRecord> {
     } else {
       await linker.linkValues(id, data.targetCategories, txn);
     }
-    await futureTicketFactoryTable.onFactoryUpdated(data, txn);
+    await FutureTicketPreparationEventHandler().onFactoryUpdated(data, txn);
   }
 
   @override
-  Future<void> unlink(Transaction txn, EstimationRecord data) async {
+  Future<void> unlink(Transaction txn, int id) async {
     // Because following lines are not heavy, execute them in sequence (to simplify).
     var linker = await EstimationTargetCategoryLinker.use(txn);
-    var futureTicketFactoryTable =
-        await FutureTicketFactoryAbstractorTable.use(txn);
-
-    if (data.id == null) {
-      throw IlligalUsageException('Tried to unlink with null id');
-    }
 
     await Future.wait([
-      linker.linkValues(data.id!, const [], txn),
-      futureTicketFactoryTable.onFactoryDeleted(data, txn),
+      linker.linkValues(id, const [], txn),
+      FutureTicketPreparationEventHandler()
+          .onFactoryDeleted(id, EstimationTable.ref(), txn),
     ]);
   }
 
   @override
   Future<void> clear() {
     EstimationTargetCategoryLinker.ref().clear();
-    FutureTicketFactoryAbstractorTable.ref().clear();
     FutureTicketTable.ref().clear();
     return super.clear();
   }
@@ -713,6 +720,8 @@ class EstimationTargetCategoryLinker extends Table<Link>
     with Linker<EstimationRecord, Category>, HaveCategoryField, CategoryLinker {
   @override
   covariant String tableName = 'EstimationTargetCategoryLinker';
+  @override
+  covariant DatabaseProvider dbProvider = PersistentDatabaseProvider();
   @override
   final keyTable = EstimationTable.ref();
   @override
@@ -733,12 +742,6 @@ class EstimationTargetCategoryLinker extends Table<Link>
   @override
   Future<List<Category>> fetchValuesByIds(
       List<int> valueIds, Transaction? txn) async {
-    if (txn == null) {
-      return Table.dbProvider.db.transaction((txn) async {
-        return fetchValuesByIds(valueIds, txn);
-      });
-    }
-
     var categories = await CategoryTable.use(txn);
     return categories.fetchByIds(valueIds, txn);
   }
@@ -776,7 +779,8 @@ class LogRecord extends TicketConfigRecord {
   @override
   Future<void> delete() async {
     var table = await LogRecordTable.use(null);
-    await table.delete(this, null);
+    if (id == null) return;
+    await table.delete(id!, null);
   }
 
   LogRecord applyPreset(LogRecord preset) {
@@ -797,6 +801,8 @@ class LogRecord extends TicketConfigRecord {
 class LogRecordTable extends Table<LogRecord> with HaveCategoryField {
   @override
   covariant String tableName = 'Logs';
+  @override
+  covariant DatabaseProvider dbProvider = PersistentDatabaseProvider();
 
   // <field names>
   static const String supplementField = 'supplement';
@@ -831,7 +837,7 @@ class LogRecordTable extends Table<LogRecord> with HaveCategoryField {
   @override
   Future<void> prepare(Transaction? txn) async {
     if (txn == null) {
-      return Table.dbProvider.db.transaction((txn) async {
+      return dbProvider.db.transaction((txn) async {
         return prepare(txn);
       });
     }
@@ -884,6 +890,71 @@ class LogRecordTable extends Table<LogRecord> with HaveCategoryField {
       imagePathField: data.image?.path,
       confirmedField: data.confirmed ? 1 : 0,
     };
+  }
+
+  Future<int> sumUpAmounts(DateTime? begin, DateTime? end, Category? category,
+      Transaction? txn) async {
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return sumUpAmounts(begin, end, category, txn);
+      });
+    }
+
+    var whereConditions = <String>[];
+
+    if (begin != null) {
+      whereConditions.add('$registeredAtField >= ${dateToInt(begin)}');
+    }
+
+    if (end != null) {
+      whereConditions.add('$registeredAtField <= ${dateToInt(end)}');
+    }
+
+    if (category != null) {
+      whereConditions.add('$categoryField = ${category.id}');
+    }
+
+    var query = 'SELECT SUM( $amountField ) FROM $tableName';
+    if (whereConditions.isNotEmpty) {
+      query += ' WHERE ${whereConditions.join(' AND ')}';
+    }
+
+    var result = await txn.rawQuery(query);
+
+    return result.first.values.first as int;
+  }
+
+  Future<double> estimateFor(Category category, Transaction? txn) async {
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return estimateFor(category, txn);
+      });
+    }
+
+    // Take the average of records that are in the quartile range
+    // only if there are enough records.
+    var whole = await recordsCount(txn);
+    var quartile = whole ~/ 4;
+    String query;
+
+    if (quartile == 0) {
+      query = '''
+        SELECT AVG( $amountField ) 
+        FROM $tableName 
+        WHERE $categoryField = ${category.id}
+      ''';
+    } else {
+      query = '''
+        SELECT SUM AVG( $amountField ) 
+        FROM $tableName 
+        ORDER BY $registeredAtField 
+        OFFSET $quartile 
+        LIMIT $quartile * 2
+      ''';
+    }
+
+    var result = await txn.rawQuery(query);
+    return result.first.values.first as double;
   }
 }
 // </Repository>

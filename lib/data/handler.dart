@@ -1,14 +1,14 @@
 import 'package:miraibo/data/ticket_data.dart';
 
-import '../page/scheduling_page.dart';
-import 'category_data.dart';
+import 'package:miraibo/page/scheduling_page.dart';
+import 'package:miraibo/data/category_data.dart';
 
-class TicketDataManager {
-  TicketDataManager._internal();
+class TicketDataFetcher {
+  TicketDataFetcher._internal();
 
   // Singleton instance
-  static final TicketDataManager _instance = TicketDataManager._internal();
-  factory TicketDataManager() => _instance;
+  static final TicketDataFetcher _instance = TicketDataFetcher._internal();
+  factory TicketDataFetcher() => _instance;
 
   /// Returns ticket configs for the given [date].
   Future<List<TicketConfigRecord>> fetchTicketConfigsFor(DateTime date) async {

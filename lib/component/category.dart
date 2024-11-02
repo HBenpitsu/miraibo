@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:miraibo/component/general_widget.dart';
 
-import '../data/category_data.dart';
+import 'package:miraibo/data/category_data.dart';
 
 /* 
 In this file, we define the category related components

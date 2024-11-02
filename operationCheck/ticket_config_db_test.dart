@@ -133,5 +133,5 @@ void main() async {
   res = await logRecordTable.fetchAll(null);
   printTicketList(res);
 
-  await DatabaseProvider().clear();
+  await PersistentDatabaseProvider().clear();
 }
