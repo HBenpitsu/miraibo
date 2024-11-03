@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:developer' as dev;
 
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -936,6 +937,11 @@ class LogRecordTable extends Table<LogRecord> with HaveCategoryField {
     var whole = await recordsCount(txn);
     var quartile = whole ~/ 4;
     String query;
+
+    if (whole == 0) {
+      dev.log('No records found for estimation');
+      return 0;
+    }
 
     if (quartile == 0) {
       query = '''

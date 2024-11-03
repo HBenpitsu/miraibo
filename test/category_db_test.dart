@@ -1,32 +1,33 @@
+import 'package:flutter/foundation.dart' as dev;
 import 'package:flutter_test/flutter_test.dart';
-
-import '../lib/data/category_data.dart';
+import 'package:miraibo/data/category_data.dart';
 
 void printList(List<Category> list) {
-  print(list.map((e) => e.name).join(','));
+  dev.debugPrint(list.map((e) => e.name).join(','));
 }
 
 void main() async {
-  test('category db works?', () async {
+  test('initial category', () async {
     CategoryTable categoryTable = await CategoryTable.use(null);
-    var res;
-    res = await categoryTable.fetchAll(null);
+    var res = await categoryTable.fetchAll(null);
     printList(res);
-
-    Category newCat = await Category.make('New Category');
-    res = await categoryTable.fetchAll(null);
+  });
+  test('new category', () async {
+    CategoryTable categoryTable = await CategoryTable.use(null);
+    await categoryTable.make('test', null);
+    var res = await categoryTable.fetchAll(null);
     printList(res);
-
-    await newCat.rename('Renamed Category');
-
-    res = await categoryTable.fetchAll(null);
+  });
+  test('rename category', () async {
+    CategoryTable categoryTable = await CategoryTable.use(null);
+    var category = await categoryTable.make('test', null);
+    await category.rename('renamed');
+    var res = await categoryTable.fetchAll(null);
     printList(res);
+  });
 
-    await newCat.integrateWith(res.first);
-
-    res = await categoryTable.fetchAll(null);
-    printList(res);
-
+  tearDownAll(() async {
+    CategoryTable categoryTable = await CategoryTable.use(null);
     await categoryTable.clear();
   });
 }

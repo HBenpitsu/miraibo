@@ -1,6 +1,4 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:miraibo/data/database.dart';
 import 'package:miraibo/data/ticket_data.dart';
 import 'package:miraibo/data/category_data.dart';
@@ -76,21 +74,15 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
     await txn.execute(makeTable([
       makeIdField(),
       ...makeForeignField(scheduleField, ScheduleTable.ref(),
-          rField: Table.idField, notNull: true),
+          rField: Table.idField),
       ...makeForeignField(estimationField, EstimationTable.ref(),
-          rField: Table.idField, notNull: true),
+          rField: Table.idField),
       ...makeForeignField(categoryField, CategoryTable.ref(),
           rField: Table.idField, notNull: true),
       makeTextField(supplementField, notNull: true),
       makeDateField(scheduledAtField, notNull: true),
       makeRealField(amountField, notNull: true),
     ]));
-  }
-
-  @override
-  Future<void> clear() {
-    FutureTicketPreparationState().clear();
-    return super.clear();
   }
 
   @override
@@ -337,27 +329,24 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
 
 // holds the state of the future ticket preparation
 // background worker is implemented in the another file: see background_worker/future_ticket_preparation.dart
-class FutureTicketPreparationState {
+class FutureTicketPreparationState extends NoSQL {
   // <constructor>
   // singleton pattern
   FutureTicketPreparationState._internal();
   static final FutureTicketPreparationState _instance =
       FutureTicketPreparationState._internal();
 
-  factory FutureTicketPreparationState() => _instance;
-  // </constructor>
-
-  final SharedPreferencesAsync _prefs = SharedPreferencesAsync();
-
-  Future<void> clear() async {
-    await _prefs.clear();
+  static Future<FutureTicketPreparationState> use() async {
+    await _instance.ensureAvailability();
+    return _instance;
   }
+  // </constructor>
 
   // <tickets needed until>
   static const String _keyTicketsNeededUntil = 'ticketNeededUntil';
 
   Future<DateTime> getNeededUntil() async {
-    var val = await _prefs.getInt(_keyTicketsNeededUntil);
+    var val = await prefs.getInt(_keyTicketsNeededUntil);
     if (val == null) {
       return DateTime.now();
     } else {
@@ -367,9 +356,9 @@ class FutureTicketPreparationState {
 
   /// This only updates the date if the date is later than the currently stored date.
   Future<void> updateNeededUntil(DateTime date) async {
-    var val = await _prefs.getInt(_keyTicketsNeededUntil);
+    var val = await prefs.getInt(_keyTicketsNeededUntil);
     if (val == null || val < date.millisecondsSinceEpoch) {
-      await _prefs.setInt(_keyTicketsNeededUntil, date.millisecondsSinceEpoch);
+      await prefs.setInt(_keyTicketsNeededUntil, date.millisecondsSinceEpoch);
     }
   }
   // </tickets needed until>
@@ -378,7 +367,7 @@ class FutureTicketPreparationState {
   static const String _keyTicketsPreparedUntil = 'ticketsPreparedUntil';
 
   Future<DateTime> getPreparedUntil() async {
-    var val = await _prefs.getInt(_keyTicketsPreparedUntil);
+    var val = await prefs.getInt(_keyTicketsPreparedUntil);
     if (val == null) {
       return DateTime.now();
     } else {
@@ -387,14 +376,14 @@ class FutureTicketPreparationState {
   }
 
   Future<void> setPreparedUntil(DateTime date) async {
-    await _prefs.setInt(_keyTicketsPreparedUntil, date.millisecondsSinceEpoch);
+    await prefs.setInt(_keyTicketsPreparedUntil, date.millisecondsSinceEpoch);
   }
   // </tickets prepared until>
 
   // <tickets preparing>
   static const String _keyTicketsPreparing = 'ticketsPreparing';
   Future<DateTime> getPreparingUntil() async {
-    var val = await _prefs.getInt(_keyTicketsPreparing);
+    var val = await prefs.getInt(_keyTicketsPreparing);
     if (val == null) {
       return DateTime.now();
     } else {
@@ -403,18 +392,19 @@ class FutureTicketPreparationState {
   }
 
   Future<void> setPreparingUntil(DateTime date) async {
-    await _prefs.setInt(_keyTicketsPreparing, date.millisecondsSinceEpoch);
+    await prefs.setInt(_keyTicketsPreparing, date.millisecondsSinceEpoch);
   }
   // </tickets preparing>
 
   // <tickets prepared>
   static const String _keyTicketsPrepared = 'ticketsPrepared';
+  // TODO: rewrite this to return the value according to preparingUntil and preparedUntil
   Future<bool> getTicketsPrepared() async {
-    return await _prefs.getBool(_keyTicketsPrepared) ?? false;
+    return await prefs.getBool(_keyTicketsPrepared) ?? false;
   }
 
   Future<void> setTicketsPrepared(bool val) async {
-    await _prefs.setBool(_keyTicketsPrepared, val);
+    await prefs.setBool(_keyTicketsPrepared, val);
   }
   // </tickets prepared>
 }

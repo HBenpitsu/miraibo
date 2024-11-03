@@ -62,6 +62,8 @@ class FutureTicketGenerator {
       amount: schedule.amount.toDouble(),
     );
 
+    var preparationState = await FutureTicketPreparationState.use();
+
     switch (schedule.repeatType) {
       case RepeatType.no:
         await futureTicketTable.save(futureTicketTemplate, txn);
@@ -70,8 +72,7 @@ class FutureTicketGenerator {
         await futureTicketTable.makeTicketsWithInterval(
             futureTicketTemplate,
             schedule.startDate ?? DateTime.now(),
-            schedule.endDate ??
-                await FutureTicketPreparationState().getNeededUntil(),
+            schedule.endDate ?? await preparationState.getNeededUntil(),
             schedule.repeatInterval,
             txn);
         break;
@@ -81,8 +82,7 @@ class FutureTicketGenerator {
             futureTicketTable.makeWeeklyTickets(
                 futureTicketTemplate,
                 schedule.startDate ?? DateTime.now(),
-                schedule.endDate ??
-                    await FutureTicketPreparationState().getNeededUntil(),
+                schedule.endDate ?? await preparationState.getNeededUntil(),
                 weekday,
                 txn)
         ]);
@@ -92,16 +92,14 @@ class FutureTicketGenerator {
           await futureTicketTable.makeHeadOriginMonthlyTickets(
               futureTicketTemplate,
               schedule.startDate ?? DateTime.now(),
-              schedule.endDate ??
-                  await FutureTicketPreparationState().getNeededUntil(),
+              schedule.endDate ?? await preparationState.getNeededUntil(),
               schedule.monthlyRepeatHeadOriginOffset!,
               txn);
         } else if (schedule.monthlyRepeatTailOriginOffset != null) {
           await futureTicketTable.makeTailOriginMonthlyTickets(
               futureTicketTemplate,
               schedule.startDate ?? DateTime.now(),
-              schedule.endDate ??
-                  await FutureTicketPreparationState().getNeededUntil(),
+              schedule.endDate ?? await preparationState.getNeededUntil(),
               schedule.monthlyRepeatTailOriginOffset!,
               txn);
         }
@@ -110,8 +108,7 @@ class FutureTicketGenerator {
         await futureTicketTable.makeAnnualTickets(
             futureTicketTemplate,
             schedule.startDate ?? DateTime.now(),
-            schedule.endDate ??
-                await FutureTicketPreparationState().getNeededUntil(),
+            schedule.endDate ?? await preparationState.getNeededUntil(),
             txn);
         break;
     }
@@ -136,6 +133,7 @@ class FutureTicketGenerator {
 
     var futureTicketTable = await FutureTicketTable.use(txn);
     var logRecordTable = await LogRecordTable.use(txn);
+    var preparationState = await FutureTicketPreparationState.use();
 
     for (var target in targetCategories) {
       var estimatedAmount = await logRecordTable.estimateFor(target, txn);
@@ -152,8 +150,7 @@ class FutureTicketGenerator {
       futureTicketTable.makeTicketsEveryday(
           template,
           estimation.startDate ?? DateTime.now(),
-          estimation.endDate ??
-              await FutureTicketPreparationState().getNeededUntil(),
+          estimation.endDate ?? await preparationState.getNeededUntil(),
           txn);
     }
   }

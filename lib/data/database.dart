@@ -5,6 +5,13 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
+import 'package:shared_preferences_android/shared_preferences_android.dart';
+import 'package:shared_preferences_linux/shared_preferences_linux.dart';
+import 'package:shared_preferences_web/shared_preferences_web.dart';
+import 'package:shared_preferences_windows/shared_preferences_windows.dart';
+
 abstract class DatabaseProvider {
   Database? _database;
   Future<void> init();
@@ -408,6 +415,26 @@ mixin Linker<Kv extends DTO, Vv extends DTO> on Table<Link> {
         id: row[Table.idField] as int,
         keyId: row[keyIdField] as int,
         valueId: row[valueIdField] as int);
+  }
+}
+
+abstract class NoSQL {
+  final SharedPreferencesAsync prefs = SharedPreferencesAsync();
+  Future<void> ensureAvailability() async {
+    if (SharedPreferencesAsyncPlatform.instance != null) {
+      return;
+    }
+    if (kIsWeb) {
+      SharedPreferencesAsyncPlatform.instance = SharedPreferencesAsyncWeb();
+    } else if (Platform.isLinux) {
+      SharedPreferencesAsyncPlatform.instance = SharedPreferencesAsyncLinux();
+    } else if (Platform.isAndroid) {
+      SharedPreferencesAsyncPlatform.instance = SharedPreferencesAsyncAndroid();
+    } else if (Platform.isWindows) {
+      SharedPreferencesAsyncPlatform.instance = SharedPreferencesAsyncWindows();
+    } else {
+      throw Exception('unable to use SharedPreferencesAsync in this platform');
+    }
   }
 }
 // </general data structure>

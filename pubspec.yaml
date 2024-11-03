@@ -45,6 +45,7 @@ dependencies:
   sqflite_common_ffi:
   sqflite_common_ffi_web:
   shared_preferences:
+  shared_preferences_platform_interface:
 
 dev_dependencies:
   flutter_test:
