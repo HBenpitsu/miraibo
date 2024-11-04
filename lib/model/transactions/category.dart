@@ -1,5 +1,5 @@
 import 'package:sqflite/sqflite.dart';
-import 'package:miraibo/model/infra/persistent_db_table_definitions.dart';
+import 'package:miraibo/model/infra/main_db_table_definitions.dart';
 import 'package:miraibo/model/infra/database_provider.dart';
 import 'package:miraibo/model/infra/table_components.dart';
 
@@ -8,7 +8,7 @@ class SaveCategory extends TransactionProvider<int> {
   SaveCategory(this.category);
 
   @override
-  get dbProvider => PersistentDatabaseProvider();
+  get dbProvider => MainDatabaseProvider();
 
   @override
   Future<int> process(Transaction txn) async {
@@ -28,7 +28,7 @@ class ReplaceCategory extends TransactionProvider<void> {
   ReplaceCategory(this.replaced, this.replaceWith);
 
   @override
-  get dbProvider => PersistentDatabaseProvider();
+  get dbProvider => MainDatabaseProvider();
 
   @override
   Future<void> process(Transaction txn) async {
@@ -66,7 +66,7 @@ class ReplaceCategory extends TransactionProvider<void> {
 
 class FetchAllCategories extends TransactionProvider<List<Category>> {
   @override
-  get dbProvider => PersistentDatabaseProvider();
+  get dbProvider => MainDatabaseProvider();
 
   @override
   Future<List<Category>> process(Transaction txn) async {
@@ -77,7 +77,7 @@ class FetchAllCategories extends TransactionProvider<List<Category>> {
 
 class FetchFirstCategory extends TransactionProvider<Category> {
   @override
-  get dbProvider => PersistentDatabaseProvider();
+  get dbProvider => MainDatabaseProvider();
 
   @override
   Future<Category> process(Transaction txn) async {
@@ -92,7 +92,7 @@ class FindCategory extends TransactionProvider<Category> {
   FindCategory(this.id);
 
   @override
-  get dbProvider => PersistentDatabaseProvider();
+  get dbProvider => MainDatabaseProvider();
 
   @override
   Future<Category> process(Transaction txn) async {

@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
-import 'package:miraibo/model/infra/persistent_db_table_definitions.dart';
+import 'package:miraibo/model/infra/main_db_table_definitions.dart';
+import 'package:miraibo/model/infra/queue_db_table_definitions.dart';
 import 'package:miraibo/model/infra/database_provider.dart';
 import 'package:miraibo/model/infra/table_components.dart';
 
@@ -22,9 +23,9 @@ const initialCategories = [
   'Ajustment',
 ];
 
-class InitPersistentDatabase extends TransactionProvider {
+class InitMainDatabase extends TransactionProvider {
   @override
-  get dbProvider => PersistentDatabaseProvider();
+  get dbProvider => MainDatabaseProvider();
 
   @override
   Future<void> process(Transaction txn) async {
@@ -50,5 +51,21 @@ class InitPersistentDatabase extends TransactionProvider {
           INSERT INTO ${Categories().tableName} (${CategoryFE.name.fn}) VALUES (${initialCategories.map((e) => '"$e"').join('), (')})
           ''');
     }
+  }
+}
+
+class InitQueueDatabase extends TransactionProvider {
+  @override
+  get dbProvider => QueueDatabaseProvider();
+
+  @override
+  Future<void> process(Transaction txn) async {
+    await createTables(txn);
+  }
+
+  Future<void> createTables(Transaction txn) {
+    return Future.wait([
+      txn.execute(PredictionTasks().createString),
+    ]);
   }
 }

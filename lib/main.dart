@@ -15,7 +15,7 @@ This is the entry point of the application.
 
 /* clear db */
 void main() async {
-  RelationalDatabaseProvider dbProvider = PersistentDatabaseProvider();
+  RelationalDatabaseProvider dbProvider = MainDatabaseProvider();
   await dbProvider.clear();
 }
 

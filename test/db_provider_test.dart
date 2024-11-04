@@ -4,7 +4,7 @@ import 'package:miraibo/model/infra/database_provider.dart';
 
 void main() {
   test('ensureAvailability', () async {
-    RelationalDatabaseProvider dbProvider = PersistentDatabaseProvider();
+    RelationalDatabaseProvider dbProvider = MainDatabaseProvider();
     await dbProvider.ensureAvailability();
     expect(dbProvider.db.isOpen, true);
   });

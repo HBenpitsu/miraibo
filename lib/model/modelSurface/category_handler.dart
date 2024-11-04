@@ -1,7 +1,6 @@
 import 'package:miraibo/model/modelSurface/view_obj.dart' as view_obj;
 import 'package:miraibo/model/transactions/category.dart';
-import 'package:miraibo/model/infra/persistent_db_table_definitions.dart'
-    as dat;
+import 'package:miraibo/model/infra/main_db_table_definitions.dart' as dat;
 
 class CategoryHandler {
   Future<List<view_obj.Category>> all() async {

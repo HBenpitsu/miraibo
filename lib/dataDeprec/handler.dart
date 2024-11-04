@@ -1,6 +1,5 @@
 import 'package:miraibo/dataDeprec/ticket_data.dart';
 
-import 'package:miraibo/ui/page/scheduling_page.dart';
 import 'package:miraibo/dataDeprec/category_data.dart';
 import 'package:miraibo/util/date_time.dart';
 import 'package:miraibo/type/enumarations.dart';

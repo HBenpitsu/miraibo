@@ -11,23 +11,10 @@ import 'package:shared_preferences_linux/shared_preferences_linux.dart';
 // import 'package:shared_preferences_web/shared_preferences_web.dart'; // this package cause compile error
 import 'package:shared_preferences_windows/shared_preferences_windows.dart';
 
+// <relational database>
 abstract class RelationalDatabaseProvider {
   Database? _database;
-  Future<void> ensureAvailability();
-  Future<void> clear();
-  Database get db => _database!;
-}
-
-class PersistentDatabaseProvider extends RelationalDatabaseProvider {
-  // Singleton
-  static final String dbName = 'miraibo.db';
-
-  PersistentDatabaseProvider._internal();
-  static final PersistentDatabaseProvider _instance =
-      PersistentDatabaseProvider._internal();
-  factory PersistentDatabaseProvider() => _instance;
-
-  @override
+  String get dbName;
   Future<void> ensureAvailability() async {
     if (_database != null) {
       return;
@@ -41,7 +28,6 @@ class PersistentDatabaseProvider extends RelationalDatabaseProvider {
     _database ??= await openDatabase(dbName);
   }
 
-  @override
   Future<void> clear() async {
     await ensureAvailability();
     await _database!.close();
@@ -49,34 +35,30 @@ class PersistentDatabaseProvider extends RelationalDatabaseProvider {
     await file.delete();
     _database = null;
   }
+
+  Database get db => _database!;
 }
 
-class InmemoryDatabaseProvider extends RelationalDatabaseProvider {
-  InmemoryDatabaseProvider._internal();
-  static final InmemoryDatabaseProvider _instance =
-      InmemoryDatabaseProvider._internal();
-  factory InmemoryDatabaseProvider() => _instance;
+class MainDatabaseProvider extends RelationalDatabaseProvider {
+  // Singleton
+  MainDatabaseProvider._internal();
+  static final MainDatabaseProvider _instance =
+      MainDatabaseProvider._internal();
+  factory MainDatabaseProvider() => _instance;
 
   @override
-  Future<void> ensureAvailability() async {
-    if (_database != null) {
-      return;
-    }
-    if (!kIsWeb && (Platform.isLinux || Platform.isWindows)) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
-    } else if (kIsWeb) {
-      databaseFactory = databaseFactoryFfiWeb;
-    }
-    _database ??= await openDatabase(inMemoryDatabasePath);
-  }
+  String get dbName => 'miraibo.db';
+}
+
+class QueueDatabaseProvider extends RelationalDatabaseProvider {
+  // Singleton
+  QueueDatabaseProvider._internal();
+  static final QueueDatabaseProvider _instance =
+      QueueDatabaseProvider._internal();
+  factory QueueDatabaseProvider() => _instance;
 
   @override
-  Future<void> clear() async {
-    await ensureAvailability();
-    await _database!.close();
-    _database = null;
-  }
+  String get dbName => 'miraibo_queue.db';
 }
 
 abstract class TransactionProvider<T> {
@@ -91,7 +73,9 @@ abstract class TransactionProvider<T> {
 
   Future<T> process(Transaction txn);
 }
+// </relational database>
 
+// <no relational database>
 class KeyValueDatabaseProvider {
   KeyValueDatabaseProvider._internal();
   static final KeyValueDatabaseProvider _instance =
@@ -127,3 +111,5 @@ class KeyValueDatabaseProvider {
     await _prefs!.clear();
   }
 }
+
+// </no relational database>
