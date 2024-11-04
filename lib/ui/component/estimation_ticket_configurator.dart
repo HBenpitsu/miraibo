@@ -5,9 +5,9 @@ import 'package:miraibo/ui/component/category.dart';
 import 'package:miraibo/ui/component/configurator_component.dart';
 import 'package:miraibo/ui/component/general_widget.dart';
 import 'package:miraibo/ui/component/ticket_configurator_shared_traits.dart';
-import 'package:miraibo/model/modelSurface/view_obj.dart';
-import 'package:miraibo/model/modelSurface/estimation_handler.dart';
-import 'package:miraibo/model/modelSurface/default_object_provider.dart';
+import 'package:miraibo/type/view_obj.dart';
+import 'package:miraibo/model/model_surface/estimation_handler.dart';
+import 'package:miraibo/model/model_surface/default_object_provider.dart';
 import 'package:miraibo/type/enumarations.dart';
 
 /* <estimation ticket configurator>
@@ -83,7 +83,7 @@ class _EstimationTicketConfiguraitonSectionState
           'Category selector is not prepared yet. Please wait until it is loaded.');
       return;
     }
-    if (!categoryCtl.allCategoriesInitiallySelected &&
+    if (!categoryCtl.allCategoriesSelected &&
         categoryCtl.selectedCategories.isEmpty) {
       showErrorDialog(
           context, 'Category unselected. Please select at least one category.');

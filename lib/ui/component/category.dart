@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:miraibo/ui/component/general_widget.dart';
 
-import 'package:miraibo/model/modelSurface/view_obj.dart';
-import 'package:miraibo/model/modelSurface/category_handler.dart';
+import 'package:miraibo/type/view_obj.dart';
+import 'package:miraibo/model/model_surface/category_handler.dart';
 
 /* 
 In this file, we define the category related components

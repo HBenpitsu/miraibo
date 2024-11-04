@@ -1,47 +1,52 @@
+
+(confirmed Nov 5 2024)
+
 # directory-policy
 
 To keep the project organized, we need to arrange files in a consistent way. The specific method for organizing files in the `lib` directory and the abstractions of these directories are explained below.
 
-## directories
+# lib
 
-### page
+In `lib`, there are seveal entries;
 
-The `page` directory contains `Page` UI definitions. Data handling code is separated into the `data_handler` directory. A `Page` is a concept or widget in this application. The `Page` widget is directly attached to the outermost `TabView` of this app, which is the second largest container in the app.
+- main.dart
+- util
+- ui
+- type
+- model
+- commander
 
-Instances of `Page` include:
+Note that other entries are deprecated and will be removed from the source in the future.
 
-- Scheduling Page
-- Ticket Page
-- Data Page
-- Utils Page
+main.dart is an entry point of the project. Take care not to write too much in the file.
 
-For more details, check the `component-structure.md` document.
+The `util` directory is intended for utility files. It is important to avoid cluttering this directory with too many files; only include isolated and concise pieces of code. For instance, DateTime utilities are currently located here because they are independent of any specific context, and not too large.
 
-This app displays a single `Page` at a time, and the displayed `Page` will be changed according to Tab paging Controller.
+The `ui` directory contains UI definitions and has two subdirectories: `component` and `page`. In accordance with the MVC model, it includes both Views and Controllers. Pairs of view and controller are placed sequentially in the same file.
+In `page` directory, there are four files each of that reperesents a single `page`. Detail of each page are discripted in `miraibo.md`.
+The `component` directory contains reusable components that are used across multiple pages or included by other components.
 
-### component
+The `type` directory contains small and simple type definitions.
+Currently, this directory includes:
 
-The `component` directory contains UI definitions of widgets used across various `Pages` or widgets which belongs to `component` directory. Note that 'UI definition' includes the definition of motion, such as scroll behavior, not just appearance.
+- enumerations with basic extensions.
+- date transfer objects for UI layer.
+- date transfer objects for Model layer.
 
-`ticket_configurator.dart` contains a function to pop up modal bottom sheet and definitions of the content of its sheet. They can be called in scheduling-, data- and ticket-page. Ticket_configurator is to create, edit and delete data which is shown in `ticket` form. It should be noticed that this file focuses on UI-definition and actual data handling is transfered into files in `data_handler` directory.
+Note that the UI-layer DTOs and Model-layer DTOs are separated even though they have shared name.
+Especialy, even thoguh two Categoty DTO shares the same structure, they are separated because they are used in different layers.
 
-`ticket.dart` contains a `Ticket` widget. Tickets are to show the data in simple, consistent, and scallable way. They are basically cards which show some information and listen to gesture events.
+The `model` directory represents the model layer. When methods are called from outside the model, the `model_surface` is used.
+Methods in `model_surface` should not be huge. I calls methods in `transaction` or `worker`.
+`transaction` is a unit of process. They are implemented using `infra` and `subtransaction`.
 
-### data_handlers
+The `commander` directory holds `commander`s. A commander commands something to `ui`-layer and `model`-layer.
+It is installed because make it possible for model-layer to invoke event of ui-layer.
+Because `model` layer should not dependent on the `ui` layer, it is impossible to invoke event of `ui`-layer without `commander`.
+When `model` layer want to invoke `ui` event, it requires a `commander` to invoke event.
 
-In this directory, main purpose of code is to handle data.
+For more detail of features and responsibilities of each sublayer, check out `project-design.md`.
 
-Handling data basically means:
+# doc
 
-- saving new data
-- fetching existing data
-- updating existing data
-- deleting existing data
-
-As applied tasks, it also includes:
-
-- searching values to be shown
-- calculating values to be shown
-- summarizing data and make represents
-
-There are defenition of data structure too, because data-structure is highly related to updating, searching and so on.
+In `doc` directory, general documents are located.

@@ -6,9 +6,9 @@ import 'package:miraibo/ui/component/configurator_component.dart';
 import 'package:miraibo/ui/component/general_widget.dart';
 import 'package:miraibo/ui/component/ticket_configurator_shared_traits.dart';
 import 'package:miraibo/util/date_time.dart';
-import 'package:miraibo/model/modelSurface/view_obj.dart';
-import 'package:miraibo/model/modelSurface/default_object_provider.dart';
-import 'package:miraibo/model/modelSurface/schedule_handler.dart';
+import 'package:miraibo/type/view_obj.dart';
+import 'package:miraibo/model/model_surface/default_object_provider.dart';
+import 'package:miraibo/model/model_surface/schedule_handler.dart';
 import 'package:miraibo/type/enumarations.dart';
 
 /*  <schedule ticket configurator>
@@ -372,25 +372,6 @@ class _ScheduleTicketRepeatSettingSectorState
     ]);
   }
 
-  String dayOfWeekLabel(Weekday day) {
-    switch (day) {
-      case Weekday.sunday:
-        return 'Sun';
-      case Weekday.monday:
-        return 'Mon';
-      case Weekday.tuesday:
-        return 'Tue';
-      case Weekday.wednesday:
-        return 'Wed';
-      case Weekday.thursday:
-        return 'Thu';
-      case Weekday.friday:
-        return 'Fri';
-      case Weekday.saturday:
-        return 'Sat';
-    }
-  }
-
   Widget weekDayIconButton(Weekday day) {
     return IconButton(
         onPressed: () {
@@ -408,7 +389,7 @@ class _ScheduleTicketRepeatSettingSectorState
         icon: SizedBox(
             width: 30,
             child: Center(
-                child: Text(dayOfWeekLabel(day),
+                child: Text(day.shortString,
                     style: TextStyle(
                         color: widget.controller.dayOfWeekSelected(day)
                             ? Theme.of(context).primaryColor

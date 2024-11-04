@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:miraibo/model/transaction/tentative_transaction_expand.dart';
 import 'package:miraibo/ui/page/scheduling_page.dart';
 import 'package:miraibo/ui/page/ticket_page.dart';
 import 'package:miraibo/ui/page/data_page.dart';
 import 'package:miraibo/ui/page/utils_page.dart';
 import 'package:miraibo/ui/component/motion.dart';
-import 'package:miraibo/model/infra/database_provider.dart';
+import 'package:miraibo/model/transaction/initialize_database.dart';
 
 /* 
 This is the entry point of the application. 
 */
-// void main() {
-//   runApp(const MyApp());
-// }
-
-/* clear db */
 void main() async {
-  RelationalDatabaseProvider dbProvider = MainDatabaseProvider();
-  await dbProvider.clear();
+  await InitMainDatabase().execute();
+  await TentativeExpand().execute();
+  runApp(const MyApp());
 }
+
+// /* clear db */
+// void main() async {
+//   RelationalDatabaseProvider dbProvider = MainDatabaseProvider();
+//   await dbProvider.clear();
+// }
 
 /* 
 This widget is the root of the application.

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:miraibo/model/infra/database_provider.dart';
-import 'package:miraibo/model/transactions/initialize_database.dart';
+import 'package:miraibo/model/transaction/initialize_database.dart';
 import 'package:miraibo/model/infra/main_db_table_definitions.dart';
 
 void main() {

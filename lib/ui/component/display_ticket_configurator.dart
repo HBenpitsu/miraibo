@@ -7,9 +7,9 @@ import 'package:miraibo/ui/component/general_widget.dart';
 import 'package:miraibo/ui/component/ticket_configurator_shared_traits.dart';
 import 'package:miraibo/type/enumarations.dart';
 import 'package:miraibo/util/date_time.dart';
-import 'package:miraibo/model/modelSurface/view_obj.dart';
-import 'package:miraibo/model/modelSurface/default_object_provider.dart';
-import 'package:miraibo/model/modelSurface/display_handler.dart';
+import 'package:miraibo/type/view_obj.dart';
+import 'package:miraibo/model/model_surface/default_object_provider.dart';
+import 'package:miraibo/model/model_surface/display_handler.dart';
 
 /* <display ticket configurator>
 
@@ -97,7 +97,7 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
           'Category selector is not prepared yet. Please wait until it is loaded.');
       return;
     }
-    if (categorySelectorCtl.allCategoriesSelected &&
+    if (!categorySelectorCtl.allCategoriesSelected &&
         categorySelectorCtl.selectedCategories.isEmpty) {
       showErrorDialog(
           context, 'Category unselected. Please select at least one category.');

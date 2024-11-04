@@ -37,9 +37,12 @@ class InitMainDatabase extends TransactionProvider {
     return Future.wait([
       txn.execute(Categories().createString),
       txn.execute(DisplayTickets().createString),
+      txn.execute(DtCatLinker().createString),
       txn.execute(Schedules().createString),
       txn.execute(Estimations().createString),
+      txn.execute(EtCatLinker().createString),
       txn.execute(Logs().createString),
+      txn.execute(Predictions().createString),
     ]);
   }
 

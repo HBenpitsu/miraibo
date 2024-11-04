@@ -13,11 +13,11 @@ import 'package:miraibo/ui/component/ticket_configurator_shared_traits.dart';
 import 'package:miraibo/ui/component/motion.dart';
 import 'package:miraibo/ui/component/ticket.dart';
 
-import 'package:miraibo/model/modelSurface/date_button_handler.dart';
-import 'package:miraibo/model/modelSurface/display_handler.dart';
-import 'package:miraibo/model/modelSurface/estimation_handler.dart';
-import 'package:miraibo/model/modelSurface/log_handler.dart';
-import 'package:miraibo/model/modelSurface/schedule_handler.dart';
+import 'package:miraibo/model/model_surface/date_button_handler.dart';
+import 'package:miraibo/model/model_surface/display_handler.dart';
+import 'package:miraibo/model/model_surface/estimation_handler.dart';
+import 'package:miraibo/model/model_surface/log_handler.dart';
+import 'package:miraibo/model/model_surface/schedule_handler.dart';
 
 import 'package:miraibo/util/date_time.dart';
 import 'package:miraibo/type/enumarations.dart';

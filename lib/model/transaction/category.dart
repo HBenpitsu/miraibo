@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:miraibo/model/infra/main_db_table_definitions.dart';
 import 'package:miraibo/model/infra/database_provider.dart';
 import 'package:miraibo/model/infra/table_components.dart';
+import 'package:miraibo/type/model_obj.dart';
 
 class SaveCategory extends TransactionProvider<int> {
   final Category category;

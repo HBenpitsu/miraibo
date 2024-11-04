@@ -33,6 +33,20 @@ enum MonthlyRepeatType { fromHead, fromTail }
 
 enum Weekday { sunday, monday, tuesday, wednesday, thursday, friday, saturday }
 
+extension WeekdayExtension on Weekday {
+  static const List<String> _weekdayNames = [
+    'Sun',
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat'
+  ];
+  String get shortString => _weekdayNames[index];
+  int get number => index + 1;
+}
+
 enum DateButtonStyle {
   hasNothing,
   hasTrivialEvent,

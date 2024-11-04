@@ -12,6 +12,7 @@ import 'package:shared_preferences_linux/shared_preferences_linux.dart';
 import 'package:shared_preferences_windows/shared_preferences_windows.dart';
 
 // <relational database>
+// <database provider>
 abstract class RelationalDatabaseProvider {
   Database? _database;
   String get dbName;
@@ -60,7 +61,9 @@ class QueueDatabaseProvider extends RelationalDatabaseProvider {
   @override
   String get dbName => 'miraibo_queue.db';
 }
+// </database provider>
 
+// <transaction provider>
 abstract class TransactionProvider<T> {
   RelationalDatabaseProvider get dbProvider;
 
@@ -73,6 +76,15 @@ abstract class TransactionProvider<T> {
 
   Future<T> process(Transaction txn);
 }
+
+abstract class SubTransactionProvider<T> {
+  Future<T> execute(Transaction txn) {
+    return process(txn);
+  }
+
+  Future<T> process(Transaction txn);
+}
+// </transaction provider>
 // </relational database>
 
 // <no relational database>

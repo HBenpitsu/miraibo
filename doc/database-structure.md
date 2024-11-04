@@ -1,3 +1,6 @@
+
+(confirmed Nov 5 2024)
+
 # Local Storage Data Definition
 
 - LOG_RECORD
@@ -30,7 +33,6 @@
   - linked with multiple CATEGORIES
 
 - DISPLAY_TICKET_TARGET_CATEGORY_LINKER
-  - id ( PRIMAL INT )
   - keyId ( DISPLAY_TICKETS/id )
   - valueId ( CATEGORIES/id )
 
@@ -67,7 +69,6 @@
   - linked with multiple CATEGORIES
 
 - ESTIMATION_TARGET_CATEGORY_MAP
-  - id ( PRIMAL INT )
   - keyId ( ESTIMATIONS/id )
   - valueId ( CATEGORIES/id )
 
@@ -76,11 +77,14 @@
   - schedule ( NULLABLE SCHEDULES/id )
   - estimation ( NULLABLE ESTIMATIONS/id )
   - category ( CATEGORIES/id )
-  - supplement ( TEXT )
-  - scheduledAt ( DATE )
+  - date ( DATE )
   - amount ( SIGNED INT )
 
-- FUTURE_TICKET_PREPARATION_STATE
-  - NO_SQL
-  - prepared_until ( DATE NOT NULL )
-  - prepared_at ( DATE NOT NULL )
+---
+
+The description below does not represent a relational database; it defines a key-value database.
+
+- PREDICTION_STATUS
+  - neededUntil
+  - predictedUntil
+  - predictingUntil

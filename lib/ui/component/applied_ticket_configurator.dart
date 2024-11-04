@@ -4,8 +4,8 @@ import 'package:miraibo/ui/component/display_ticket_configurator.dart';
 import 'package:miraibo/ui/component/estimation_ticket_configurator.dart';
 import 'package:miraibo/ui/component/schedule_ticket_configurator.dart';
 import 'package:miraibo/ui/component/log_ticket_configurator.dart';
-import 'package:miraibo/model/modelSurface/preset_handler.dart';
-import 'package:miraibo/model/modelSurface/view_obj.dart' as obj;
+import 'package:miraibo/model/model_surface/preset_handler.dart';
+import 'package:miraibo/type/view_obj.dart' as obj;
 
 /* <applied configurators>
 Applied Configurators are the configurators which have some additional features.

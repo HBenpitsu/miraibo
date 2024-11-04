@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:miraibo/model/modelSurface/display_handler.dart';
-import 'package:miraibo/model/modelSurface/estimation_handler.dart';
-import 'package:miraibo/model/modelSurface/view_obj.dart' as view_obj;
+import 'package:miraibo/model/model_surface/display_handler.dart';
+import 'package:miraibo/model/model_surface/estimation_handler.dart';
+import 'package:miraibo/type/view_obj.dart' as view_obj;
 import 'package:miraibo/type/enumarations.dart';
 
 /*

@@ -12,7 +12,7 @@ sealed class Field<T> {
 class IdField extends Field<int> {
   const IdField() : super('id');
   @override
-  String fieldString() => '$name INTEGER PRIMARY KEY AUTOINCREMENT';
+  String fieldString() => '$name INTEGER PRIMARY KEY';
   @override
   int interpret(Object? value) => value as int;
   @override
@@ -144,7 +144,7 @@ class DateField extends Field<DateTime> {
 class NullableDateField extends Field<DateTime?> {
   const NullableDateField(super.name, {super.isIndexed = false});
   @override
-  String fieldString() => '$name INTEGER NOT NULL CHECK ($name >= 0)';
+  String fieldString() => '$name INTEGER CHECK ($name >= 0)';
   @override
   DateTime? interpret(Object? value) {
     if (value == null) return null;
