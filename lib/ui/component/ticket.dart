@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:miraibo/data/handler.dart';
-import 'package:miraibo/data/ticket_data.dart';
+import 'package:miraibo/model/modelSurface/display_handler.dart';
+import 'package:miraibo/model/modelSurface/estimation_handler.dart';
+import 'package:miraibo/model/modelSurface/view_obj.dart' as view_obj;
+import 'package:miraibo/type/enumarations.dart';
 
 /*
 TicketTemplate is a template widget for displaying tickets.
@@ -74,13 +76,13 @@ Some consult data_handler to calculate the value to display.
 */
 class LogTicket extends StatelessWidget {
   final void Function() onPressed;
-  final LogRecord data;
+  final view_obj.Log data;
   const LogTicket({super.key, required this.onPressed, required this.data});
 
   @override
   Widget build(BuildContext context) {
     return TicketTemplate(ticketKind: 'Log', onPressed: onPressed, topLabel: [
-      data.category?.name ?? '',
+      data.category.name,
       data.supplement == '' ? '' : ' - ${data.supplement}'
     ], content: [
       Text(data.amount < 0 ? 'outcome  ' : 'income  '),
@@ -89,41 +91,32 @@ class LogTicket extends StatelessWidget {
         style: Theme.of(context).textTheme.headlineLarge,
       ),
     ], bottomLabel: [
-      '${data.registorationDate?.year}-${data.registorationDate?.month}-${data.registorationDate?.day}'
+      '${data.date.year}-${data.date.month}-${data.date.day}'
     ]);
   }
 }
 
 class ScheduleTicket extends StatelessWidget {
   final void Function() onPressed;
-  final ScheduleRecord data;
-  final bool forSchedule;
+  final view_obj.Schedule data;
   const ScheduleTicket(
-      {super.key,
-      required this.onPressed,
-      required this.data,
-      this.forSchedule = true});
+      {super.key, required this.onPressed, required this.data});
 
   String dateLabel() {
     String label = '';
-    if (forSchedule) {
-      if (data.repeatType != RepeatType.no) {
-        label += 'repeated ';
-        if (data.startDate != null) {
-          label +=
-              'from ${data.startDate?.year}-${data.startDate?.month}-${data.startDate?.day} ';
-        }
-        if (data.endDate != null) {
-          label +=
-              'until ${data.endDate?.year}-${data.endDate?.month}-${data.endDate?.day} ';
-        }
-      } else {
+    if (data.repeatType != SCRepeatType.no) {
+      label += 'repeated ';
+      if (data.periodBegin != null) {
         label +=
-            'scheduled at: ${data.originDate?.year}-${data.originDate?.month}-${data.originDate?.day} ';
+            'from ${data.periodBegin?.year}-${data.periodBegin?.month}-${data.periodBegin?.day} ';
+      }
+      if (data.periodEnd != null) {
+        label +=
+            'until ${data.periodEnd?.year}-${data.periodEnd?.month}-${data.periodEnd?.day} ';
       }
     } else {
       label +=
-          '${data.startDate?.year}-${data.startDate?.month}-${data.startDate?.day} ';
+          'scheduled at: ${data.originDate.year}-${data.originDate.month}-${data.originDate.day} ';
     }
     return label;
   }
@@ -134,7 +127,7 @@ class ScheduleTicket extends StatelessWidget {
         ticketKind: 'Schedule',
         onPressed: onPressed,
         topLabel: [
-          data.category?.name ?? '',
+          data.category.name,
           data.supplement == '' ? '' : ' - ${data.supplement}'
         ],
         content: [
@@ -152,7 +145,7 @@ class ScheduleTicket extends StatelessWidget {
 
 class DisplayTicket extends StatelessWidget {
   final void Function() onPressed;
-  final DisplayTicketRecord data;
+  final view_obj.DisplayTicket data;
   const DisplayTicket({super.key, required this.onPressed, required this.data});
 
   List<String> categoryLabel() {
@@ -163,9 +156,9 @@ class DisplayTicket extends StatelessWidget {
     }
   }
 
-  Widget content(BuildContext context) {
+  Widget content() {
     return FutureBuilder(
-        future: StatisticalAnalyzer().calcValueForDisplayTicket(data),
+        future: DisplayHandler().calculate(data),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done &&
               snapshot.hasData) {
@@ -180,28 +173,28 @@ class DisplayTicket extends StatelessWidget {
 
   String contentTypeLabel() {
     return switch (data.contentType) {
-      DisplayTicketContentType.dailyAverage => 'daily average ',
-      DisplayTicketContentType.dailyQuartileAverage =>
-        'daily quartile average ',
-      DisplayTicketContentType.monthlyAverage => 'monthly average: ',
-      DisplayTicketContentType.monthlyQuartileAverage =>
-        'monthly quartile average ',
-      DisplayTicketContentType.summation => 'summation ',
+      DTContentType.dailyAverage => 'daily average ',
+      DTContentType.dailyQuartileAverage => 'daily quartile average ',
+      DTContentType.monthlyAverage => 'monthly average: ',
+      DTContentType.monthlyQuartileAverage => 'monthly quartile average ',
+      DTContentType.summation => 'summation ',
     };
   }
 
   String dateLabel() {
     return switch (data.termMode) {
-      DisplayTicketTermMode.untilToday => 'until today',
-      DisplayTicketTermMode.lastDesignatedPeriod => switch (
-            data.designatedPeriod) {
-          DisplayTicketPeriod.week => 'for last week',
-          DisplayTicketPeriod.month => 'for last month',
-          DisplayTicketPeriod.halfYear => 'for last half year',
-          DisplayTicketPeriod.year => 'for last year',
+      DTTermMode.untilToday => 'until today',
+      DTTermMode.lastPeriod => switch (data.displayPeriod) {
+          DTPeriod.week => 'for last week',
+          DTPeriod.month => 'for last month',
+          DTPeriod.halfYear => 'for last half year',
+          DTPeriod.year => 'for last year',
         },
-      DisplayTicketTermMode.untilDesignatedDate =>
+      DTTermMode.untilDate =>
         'until ${data.designatedDate?.year}-${data.designatedDate?.month}-${data.designatedDate?.day}',
+      DTTermMode.specificPeriod =>
+        'from ${data.periodBegin?.year}-${data.periodBegin?.month}-${data.periodBegin?.day} '
+            'until ${data.periodEnd?.year}-${data.periodEnd?.month}-${data.periodEnd?.day}',
     };
   }
 
@@ -211,7 +204,7 @@ class DisplayTicket extends StatelessWidget {
       ticketKind: 'Display',
       onPressed: onPressed,
       topLabel: categoryLabel(),
-      content: [content(context)],
+      content: [content()],
       bottomLabel: [contentTypeLabel(), dateLabel()],
     );
   }
@@ -219,11 +212,11 @@ class DisplayTicket extends StatelessWidget {
 
 class EstimationTicket extends StatelessWidget {
   final void Function() onPressed;
-  final EstimationRecord data;
+  final view_obj.Estimation data;
   const EstimationTicket(
       {super.key, required this.onPressed, required this.data});
 
-  List<String> categoryLabel(BuildContext context) {
+  List<String> categoryLabel() {
     if (data.targetingAllCategories) {
       return ['all categories'];
     } else {
@@ -231,9 +224,9 @@ class EstimationTicket extends StatelessWidget {
     }
   }
 
-  Widget content(BuildContext context) {
+  Widget content() {
     return FutureBuilder(
-        future: StatisticalAnalyzer().calcValueForEstimationTicket(data),
+        future: EstimationHandler().calculate(data),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done &&
               snapshot.hasData) {
@@ -246,22 +239,22 @@ class EstimationTicket extends StatelessWidget {
         });
   }
 
-  String contentTypeLabel(BuildContext context) {
+  String contentTypeLabel() {
     return switch (data.contentType) {
-      EstimationTicketContentType.perDay => 'per day ',
-      EstimationTicketContentType.perWeek => 'per week ',
-      EstimationTicketContentType.perMonth => 'per month ',
-      EstimationTicketContentType.perYear => 'per year ',
+      ETContentType.perDay => 'per day ',
+      ETContentType.perWeek => 'per week ',
+      ETContentType.perMonth => 'per month ',
+      ETContentType.perYear => 'per year ',
     };
   }
 
-  List<String> dateLabel(BuildContext context) {
+  List<String> dateLabel() {
     return [
-      if (data.startDate == null && data.endDate == null) 'for all period',
-      if (data.startDate == null)
-        'from ${data.startDate?.year}-${data.startDate?.month}-${data.startDate?.day} ',
-      if (data.endDate == null)
-        'until ${data.endDate?.year}-${data.endDate?.month}-${data.endDate?.day} ',
+      if (data.periodBeign == null && data.periodEnd == null) 'for all period',
+      if (data.periodBeign != null)
+        'from ${data.periodBeign?.year}-${data.periodBeign?.month}-${data.periodBeign?.day} ',
+      if (data.periodEnd != null)
+        'until ${data.periodEnd?.year}-${data.periodEnd?.month}-${data.periodEnd?.day} ',
     ];
   }
 
@@ -270,9 +263,9 @@ class EstimationTicket extends StatelessWidget {
     return TicketTemplate(
       ticketKind: 'Estimation',
       onPressed: onPressed,
-      topLabel: categoryLabel(context),
-      content: [content(context)],
-      bottomLabel: [contentTypeLabel(context), ...dateLabel(context)],
+      topLabel: categoryLabel(),
+      content: [content()],
+      bottomLabel: [contentTypeLabel(), ...dateLabel()],
     );
   }
 }

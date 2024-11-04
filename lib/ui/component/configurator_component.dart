@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:function_tree/function_tree.dart';
 
-import 'package:miraibo/component/general_widget.dart';
+import 'package:miraibo/ui/component/general_widget.dart';
+import 'package:miraibo/util/date_time.dart';
 
 /* 
 This file defines a set of custom widgets that are mainly used in ticket config sections.
@@ -65,13 +66,13 @@ class _DatePickButtonState extends State<DatePickButton> {
         onPressed: () {
           showDatePicker(
                   context: context,
-                  initialDate: widget.controller.selected ?? DateTime.now(),
+                  initialDate: widget.controller.selected ?? today(),
                   firstDate: widget.controller.selected == null
-                      ? DateTime.now().subtract(const Duration(days: 365 * 200))
+                      ? today().subtract(const Duration(days: 365 * 200))
                       : widget.controller.selected!
                           .subtract(const Duration(days: 365 * 200)),
                   lastDate: widget.controller.selected == null
-                      ? DateTime.now().add(const Duration(days: 365 * 200))
+                      ? today().add(const Duration(days: 365 * 200))
                       : widget.controller.selected!
                           .add(const Duration(days: 365 * 200)))
               .then((value) {
@@ -204,6 +205,7 @@ class _MoneyformState extends State<Moneyform> {
             child: TextFormField(
                 decoration:
                     const InputDecoration(prefixIcon: Icon(Icons.calculate)),
+                initialValue: widget.controller.amount.toString(),
                 onChanged: (value) {
                   try {
                     var amount = value.interpret().toInt();
@@ -223,14 +225,14 @@ class _MoneyformState extends State<Moneyform> {
 // </MoneyForm>
 
 /* 
-<UnlimitedPeriodSelector>
-UnlimitedPeriodSelector is a widget that allows users to select a period with free edges.
+<InfinitePeriodSelector>
+InfinitePeriodSelector is a widget that allows users to select a period with free edges.
 To unselect start date means that selected period virtually starts from very beginning of the human history.
 To unselect end date means that selected period never ends (= do not have time limit).
 It is composed of two DatePickButtons.
-If the start date is after the end date, the end date is set to the start date to keep it consistent.
+// If the start date is after the end date, the end date is set to the start date to keep it consistent, vise versa.
 */
-class UnlimitedPeriodSelectorController {
+class InfinitePeriodSelectorController {
   DateTime? _start;
   DateTime? get start => _start;
   set start(DateTime? value) {
@@ -258,24 +260,23 @@ class UnlimitedPeriodSelectorController {
     }
   }
 
-  UnlimitedPeriodSelectorController(
+  InfinitePeriodSelectorController(
       {DateTime? start, DateTime? end, this.onPeriodChanged})
       : _start = start,
         _end = end;
 }
 
-class UnlimitedPeriodSelector extends StatefulWidget {
-  final UnlimitedPeriodSelectorController controller;
+class InfinitePeriodSelector extends StatefulWidget {
+  final InfinitePeriodSelectorController controller;
   final FocusNode? focusNode;
-  const UnlimitedPeriodSelector(
+  const InfinitePeriodSelector(
       {super.key, required this.controller, this.focusNode});
 
   @override
-  State<UnlimitedPeriodSelector> createState() =>
-      _UnlimitedPeriodSelectorState();
+  State<InfinitePeriodSelector> createState() => _InfinitePeriodSelectorState();
 }
 
-class _UnlimitedPeriodSelectorState extends State<UnlimitedPeriodSelector> {
+class _InfinitePeriodSelectorState extends State<InfinitePeriodSelector> {
   static double buttonHeight = 40;
   @override
   Widget build(BuildContext context) {
@@ -353,10 +354,118 @@ class _UnlimitedPeriodSelectorState extends State<UnlimitedPeriodSelector> {
     ]);
   }
 }
-// </UnlimitedPeriodSelector>
+// </InfinitePeriodSelector>
+
+// <FinitePeriodSelector>
+// FinitePeriodSelector is a widget that allows users to select a period with fixed edges.
+// It is composed of two DatePickButtons.
+// If the start date is after the end date, the end date is set to the start date to keep it consistent, vise versa.
+class FinitePeriodSelectorController {
+  DateTime _start;
+  DateTime get start => _start;
+  set start(DateTime value) {
+    _start = value;
+    if (_end.isBefore(_start)) {
+      _end = _start;
+    }
+    _onPeriodChanged();
+  }
+
+  DateTime _end;
+  DateTime get end => _end;
+  set end(DateTime value) {
+    _end = value;
+    if (_end.isBefore(_start)) {
+      _start = _end;
+    }
+    _onPeriodChanged();
+  }
+
+  void Function()? onPeriodChanged;
+  void _onPeriodChanged() {
+    if (onPeriodChanged != null) {
+      onPeriodChanged!();
+    }
+  }
+
+  FinitePeriodSelectorController(
+      {DateTime? start, DateTime? end, this.onPeriodChanged})
+      : _start = start ?? today(),
+        _end = end ?? today();
+}
+
+class FinitePeriodSelector extends StatefulWidget {
+  final FinitePeriodSelectorController controller;
+  final FocusNode? focusNode;
+  const FinitePeriodSelector(
+      {super.key, required this.controller, this.focusNode});
+
+  @override
+  State<FinitePeriodSelector> createState() => _FinitePeriodSelectorState();
+}
+
+class _FinitePeriodSelectorState extends State<FinitePeriodSelector> {
+  static double buttonHeight = 40;
+  @override
+  Widget build(BuildContext context) {
+    return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Row(
+        // start date
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'start date: ',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          SizedBox(
+            height: buttonHeight,
+            child: DatePickButton(
+                focusNode: widget.focusNode,
+                controller: DatePickButtonController(
+                    initialDate: widget.controller.start,
+                    onDateSelected: (date) {
+                      setState(() {
+                        if (date != null) {
+                          widget.controller.start = date;
+                        }
+                      });
+                    })),
+          ),
+        ],
+      ),
+      SizedBox(
+        height: 5,
+      ), //spacing
+      Row(
+        // end date
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '  end date: ',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          SizedBox(
+            height: buttonHeight,
+            child: DatePickButton(
+                controller: DatePickButtonController(
+                    initialDate: widget.controller.end,
+                    onDateSelected: (date) {
+                      setState(() {
+                        if (date != null) {
+                          widget.controller.end = date;
+                        }
+                      });
+                    })),
+          ),
+        ],
+      )
+    ]);
+  }
+}
+// </FinitePeriodSelector>
 
 /* 
-<PeriodSelector>
+<PictureSelector>
 PictureSelectorSection is a content of the window where use select and preview a picture.
 It uses ImagePicker.
 It allows users to select a picture from the gallery or take a picture with a camera.
@@ -527,4 +636,4 @@ class PictureSelectButton extends StatelessWidget {
         child: const Text('Select Picture'));
   }
 }
-// </PeriodSelector>
+// </PictureSelector>

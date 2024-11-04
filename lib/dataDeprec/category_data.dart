@@ -1,5 +1,5 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:miraibo/data/database.dart';
+import 'package:miraibo/dataDeprec/database.dart';
 
 class Category extends DTO {
   final String name;

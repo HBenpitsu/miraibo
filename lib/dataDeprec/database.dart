@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:developer' as dev;
 
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
@@ -9,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 import 'package:shared_preferences_android/shared_preferences_android.dart';
 import 'package:shared_preferences_linux/shared_preferences_linux.dart';
-import 'package:shared_preferences_web/shared_preferences_web.dart';
+// import 'package:shared_preferences_web/shared_preferences_web.dart'; // this package cause compile error
 import 'package:shared_preferences_windows/shared_preferences_windows.dart';
 
 abstract class DatabaseProvider {
@@ -51,6 +50,7 @@ class PersistentDatabaseProvider extends DatabaseProvider {
     await _database!.close();
     File file = File(_database!.path);
     await file.delete();
+    _database = null;
   }
 }
 
@@ -75,6 +75,7 @@ class InmemoryDatabaseProvider extends DatabaseProvider {
   Future<void> clear() async {
     await ensureAvailability();
     await _database!.close();
+    _database = null;
   }
 }
 
@@ -133,16 +134,6 @@ abstract class Table<T extends DTO> {
     }
   }
   // </initialization>
-
-  // <reseter>
-  Future<void> clear() async {
-    try {
-      await dbProvider.db.execute('DROP TABLE $tableName');
-    } catch (e) {
-      dev.log(e.toString(), name: 'DatabaseProvider clear failed info: ');
-    }
-  }
-  // </reseter>
 
   // <SQL generator>
   /// returns SQL query to create table
@@ -222,9 +213,8 @@ abstract class Table<T extends DTO> {
       });
     }
 
-    return [
-      for (var row in await txn.query(tableName)) await interpret(row, txn)
-    ];
+    var res = await txn.query(tableName);
+    return Future.wait([for (var row in res) interpret(row, txn)]);
   }
 
   Future<T?> fetchById(int? id, Transaction? txn) async {
@@ -249,11 +239,11 @@ abstract class Table<T extends DTO> {
       });
     }
 
-    return [
+    return Future.wait([
       for (var row in await txn.query(tableName,
           where: '$idField IN (${ids.join(', ')})'))
-        await interpret(row, txn)
-    ];
+        interpret(row, txn)
+    ]);
   }
 
   Future<int> recordsCount(Transaction? txn) async {
@@ -418,14 +408,15 @@ mixin Linker<Kv extends DTO, Vv extends DTO> on Table<Link> {
   }
 }
 
-abstract class NoSQL {
-  final SharedPreferencesAsync prefs = SharedPreferencesAsync();
+class NoSQL {
+  SharedPreferencesAsync? prefs;
   Future<void> ensureAvailability() async {
-    if (SharedPreferencesAsyncPlatform.instance != null) {
+    if (prefs != null) {
       return;
     }
     if (kIsWeb) {
-      SharedPreferencesAsyncPlatform.instance = SharedPreferencesAsyncWeb();
+      // throw Exception('unable to use SharedPreferencesAsync in this platform');
+      // just do nothing. It's fine.
     } else if (Platform.isLinux) {
       SharedPreferencesAsyncPlatform.instance = SharedPreferencesAsyncLinux();
     } else if (Platform.isAndroid) {
@@ -435,6 +426,12 @@ abstract class NoSQL {
     } else {
       throw Exception('unable to use SharedPreferencesAsync in this platform');
     }
+    prefs = SharedPreferencesAsync();
+  }
+
+  Future<void> clear() async {
+    await ensureAvailability();
+    await prefs!.clear();
   }
 }
 // </general data structure>

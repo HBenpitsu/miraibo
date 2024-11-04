@@ -3,15 +3,15 @@ import 'dart:developer' as dev;
 
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:miraibo/data/category_data.dart';
-import 'package:miraibo/data/database.dart';
-import 'package:miraibo/data/future_ticket_data.dart';
-import 'package:miraibo/data/general_enum.dart';
+import 'package:miraibo/dataDeprec/category_data.dart';
+import 'package:miraibo/dataDeprec/database.dart';
+import 'package:miraibo/dataDeprec/future_ticket_data.dart';
+import 'package:miraibo/dataDeprec/general_enum.dart';
 
 import 'package:miraibo/background_worker/future_ticket_preparation.dart';
 
 /* 
-This file contains the data classes that define the structure of the data / repository of the data, 
+This file contains the data classes that define the structure of the data / 1st layer-repositories, 
 and the methods to basic data-operations: save, delete.
 
 all classes are related to specific 'object' such as single type of ticket, category.
@@ -30,12 +30,12 @@ Abstract class to bundle:
 // <ticket config shared traits>
 abstract class TicketConfigRecord extends DTO {
   const TicketConfigRecord({super.id});
-  Future<void> save();
+  Future<TicketConfigRecord> save();
   Future<void> delete();
 }
 
-mixin TicketTable<T extends DTO> on Table<T> {
-  Future<List<T>> fetchTicketsRegisteredAt(DateTime date, Transaction? txn);
+mixin TicketTable<T extends TicketConfigRecord> on Table<T> {
+  Future<List<T>> fetchBelongsTo(DateTime date, Transaction? txn);
 }
 // </ticket config shared traits>
 
@@ -83,9 +83,18 @@ class DisplayTicketRecord extends TicketConfigRecord {
   });
 
   @override
-  Future<void> save() async {
+  Future<DisplayTicketRecord> save() async {
     var table = await DisplayTicketTable.use(null);
-    await table.save(this, null);
+    var id = await table.save(this, null);
+    return DisplayTicketRecord(
+      id: id,
+      targetCategories: targetCategories,
+      targetingAllCategories: targetingAllCategories,
+      termMode: termMode,
+      designatedDate: designatedDate,
+      designatedPeriod: designatedPeriod,
+      contentType: contentType,
+    );
   }
 
   @override
@@ -187,12 +196,6 @@ class DisplayTicketTable extends Table<DisplayTicketRecord> with TicketTable {
     var linker = await DisplayTicketTargetCategoryLinker.use(txn);
     await linker.linkValues(id, const [], txn);
   }
-
-  @override
-  Future<void> clear() {
-    DisplayTicketTargetCategoryLinker.ref().clear();
-    return super.clear();
-  }
   // </linking handler>
 
   @override
@@ -258,19 +261,24 @@ class DisplayTicketTable extends Table<DisplayTicketRecord> with TicketTable {
 
   // <tickets fetch methods>
   @override
-  Future<List<DisplayTicketRecord>> fetchTicketsRegisteredAt(
+  Future<List<DisplayTicketRecord>> fetchBelongsTo(
       DateTime date, Transaction? txn) async {
     if (txn == null) {
       return dbProvider.db.transaction((txn) async {
-        return fetchTicketsRegisteredAt(date, txn);
+        return fetchBelongsTo(date, txn);
       });
     }
 
     var result = await txn.rawQuery('''
       SELECT * FROM $tableName
-      WHERE DATE( $limitDateField ) <= DATE( ${dateToInt(date)} ) OR $limitDateField IS NULL
+      WHERE (
+        $limitDateField IS NULL
+      ) OR (
+        $limitDateField >= ${dateToInt(date)}
+      )
     ''');
-    return [for (var row in result) await interpret(row, txn)];
+
+    return Future.wait([for (var row in result) interpret(row, txn)]);
   }
   // </tickets fetch methods>
 }
@@ -341,16 +349,30 @@ class ScheduleRecord extends TicketConfigRecord with FutureTicketFactory {
     this.repeatType = RepeatType.no,
     this.repeatInterval = const Duration(days: 1),
     this.repeatWeekdays = const [],
-    this.monthlyRepeatHeadOriginOffset = const Duration(days: 0),
+    this.monthlyRepeatHeadOriginOffset,
     this.monthlyRepeatTailOriginOffset,
     this.startDate,
     this.endDate,
   });
 
   @override
-  Future<void> save() async {
+  Future<ScheduleRecord> save() async {
     var table = await ScheduleTable.use(null);
     await table.save(this, null);
+    return ScheduleRecord(
+      id: id,
+      category: category,
+      supplement: supplement,
+      originDate: originDate,
+      amount: amount,
+      repeatType: repeatType,
+      repeatInterval: repeatInterval,
+      repeatWeekdays: repeatWeekdays,
+      monthlyRepeatHeadOriginOffset: monthlyRepeatHeadOriginOffset,
+      monthlyRepeatTailOriginOffset: monthlyRepeatTailOriginOffset,
+      startDate: startDate,
+      endDate: endDate,
+    );
   }
 
   @override
@@ -359,20 +381,12 @@ class ScheduleRecord extends TicketConfigRecord with FutureTicketFactory {
     if (id == null) return;
     await table.delete(id!, null);
   }
-
-  LogRecord toLogPreset() {
-    return LogRecord(
-      category: category,
-      supplement: supplement,
-      registorationDate: originDate,
-      amount: amount,
-    );
-  }
 }
 // </DTO>
 
 // <Repository>
-class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
+class ScheduleTable extends Table<ScheduleRecord>
+    with HaveCategoryField, TicketTable {
   @override
   covariant String tableName = 'Schedules';
   @override
@@ -489,9 +503,10 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
   void validate(ScheduleRecord data) {
     if (data.category == null || data.originDate == null) {
       throw InvalidDataException(
-          'category and registorationDate of saved schedule ticket must not be null');
+          '[category] and [originDate] of saved schedule ticket must not be null');
     }
-    if (data.monthlyRepeatHeadOriginOffset == null &&
+    if (data.repeatType == RepeatType.monthly &&
+        data.monthlyRepeatHeadOriginOffset == null &&
         data.monthlyRepeatTailOriginOffset == null) {
       throw InvalidDataException(
           'Both head origin and tail origin offset are null.');
@@ -542,6 +557,20 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
     if (id == null) {
       throw IlligalUsageException('Tried to link with null id');
     }
+    data = ScheduleRecord(
+      id: id,
+      category: data.category,
+      supplement: data.supplement,
+      originDate: data.originDate,
+      amount: data.amount,
+      repeatType: data.repeatType,
+      repeatInterval: data.repeatInterval,
+      repeatWeekdays: data.repeatWeekdays,
+      monthlyRepeatHeadOriginOffset: data.monthlyRepeatHeadOriginOffset,
+      monthlyRepeatTailOriginOffset: data.monthlyRepeatTailOriginOffset,
+      startDate: data.startDate,
+      endDate: data.endDate,
+    );
     await FutureTicketPreparationEventHandler().onFactoryUpdated(data, txn);
   }
 
@@ -550,13 +579,16 @@ class ScheduleTable extends Table<ScheduleRecord> with HaveCategoryField {
     await FutureTicketPreparationEventHandler()
         .onFactoryDeleted(id, ScheduleTable.ref(), txn);
   }
-
-  @override
-  Future<void> clear() {
-    FutureTicketTable.ref().clear();
-    return super.clear();
-  }
   // </linking handler>
+
+  // <tickets fetch methods>
+  @override
+  Future<List<ScheduleRecord>> fetchBelongsTo(
+      DateTime date, Transaction? txn) async {
+    var futureTicketTable = await FutureTicketTable.use(txn);
+    return futureTicketTable.fetchSchedulesFor(date, txn);
+  }
+  // </tickets fetch methods>
 }
 // </Repository>
 // </Schedule Ticket>
@@ -580,9 +612,17 @@ class EstimationRecord extends TicketConfigRecord with FutureTicketFactory {
   final EstimationTicketContentType contentType;
 
   @override
-  Future<void> save() async {
+  Future<EstimationRecord> save() async {
     var table = await EstimationTable.use(null);
-    await table.save(this, null);
+    var id = await table.save(this, null);
+    return EstimationRecord(
+      id: id,
+      targetCategories: targetCategories,
+      targetingAllCategories: targetingAllCategories,
+      startDate: startDate,
+      endDate: endDate,
+      contentType: contentType,
+    );
   }
 
   @override
@@ -603,7 +643,7 @@ class EstimationRecord extends TicketConfigRecord with FutureTicketFactory {
 // </DTO>
 
 // <Repository>
-class EstimationTable extends Table<EstimationRecord> {
+class EstimationTable extends Table<EstimationRecord> with TicketTable {
   @override
   covariant String tableName = 'Estimations';
   @override
@@ -682,9 +722,19 @@ class EstimationTable extends Table<EstimationRecord> {
     var linker = await EstimationTargetCategoryLinker.use(txn);
 
     id ??= data.id;
+
     if (id == null) {
       throw IlligalUsageException('Tried to link with null id');
     }
+
+    data = EstimationRecord(
+      id: id,
+      targetCategories: data.targetCategories,
+      targetingAllCategories: data.targetingAllCategories,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      contentType: data.contentType,
+    );
 
     // category linking should be done before factory update
     // because factory update may need category information
@@ -707,14 +757,33 @@ class EstimationTable extends Table<EstimationRecord> {
           .onFactoryDeleted(id, EstimationTable.ref(), txn),
     ]);
   }
-
-  @override
-  Future<void> clear() {
-    EstimationTargetCategoryLinker.ref().clear();
-    FutureTicketTable.ref().clear();
-    return super.clear();
-  }
   // </linking handler>
+
+  // <tickets fetch methods>
+  @override
+  Future<List<EstimationRecord>> fetchBelongsTo(
+      DateTime date, Transaction? txn) async {
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return fetchBelongsTo(date, txn);
+      });
+    }
+
+    var result = await txn.rawQuery('''
+      SELECT * FROM $tableName
+      WHERE (
+        $periodBeginField IS NULL 
+        OR 
+        $periodBeginField <= ${dateToInt(date)}
+      ) AND (
+        $periodEndField IS NULL 
+        OR 
+        $periodEndField >= ${dateToInt(date)}
+      );
+    ''');
+    return Future.wait([for (var row in result) interpret(row, txn)]);
+  }
+  // </tickets fetch methods>
 }
 
 class EstimationTargetCategoryLinker extends Table<Link>
@@ -772,9 +841,18 @@ class LogRecord extends TicketConfigRecord {
       this.image});
 
   @override
-  Future<void> save() async {
+  Future<LogRecord> save() async {
     var table = await LogRecordTable.use(null);
-    await table.save(this, null);
+    var id = await table.save(this, null);
+    return LogRecord(
+      id: id,
+      category: category,
+      supplement: supplement,
+      registorationDate: registorationDate,
+      amount: amount,
+      confirmed: confirmed,
+      image: image,
+    );
   }
 
   @override
@@ -799,7 +877,8 @@ class LogRecord extends TicketConfigRecord {
 // </DTO>
 
 // <Repository>
-class LogRecordTable extends Table<LogRecord> with HaveCategoryField {
+class LogRecordTable extends Table<LogRecord>
+    with HaveCategoryField, TicketTable {
   @override
   covariant String tableName = 'Logs';
   @override
@@ -893,6 +972,7 @@ class LogRecordTable extends Table<LogRecord> with HaveCategoryField {
     };
   }
 
+  // <query methods>
   Future<int> sumUpAmounts(DateTime? begin, DateTime? end, Category? category,
       Transaction? txn) async {
     if (txn == null) {
@@ -962,6 +1042,25 @@ class LogRecordTable extends Table<LogRecord> with HaveCategoryField {
     var result = await txn.rawQuery(query);
     return result.first.values.first as double;
   }
+  // </query methods>
+
+  // <tickets fetch methods>
+  @override
+  Future<List<LogRecord>> fetchBelongsTo(
+      DateTime date, Transaction? txn) async {
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return fetchBelongsTo(date, txn);
+      });
+    }
+
+    var result = await txn.rawQuery('''
+      SELECT * FROM $tableName
+      WHERE $registeredAtField = ${dateToInt(date)}
+    ''');
+    return Future.wait([for (var row in result) interpret(row, txn)]);
+  }
+  // </tickets fetch methods>
 }
 // </Repository>
 // </Log Ticket>

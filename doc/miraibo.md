@@ -1,6 +1,12 @@
+
+(confirmed on 3rd Nov 2024)
+
 # Miraibo
 
 An application to help users manage their finances, focusing on balancing payments. This app provides features to estimate and visualize the user's financial situation **in the future**. It is particularly useful for young people, such as students.
+
+In this document, the abstraction of features are explained.
+Note that this document does not contain detail for implementation, and does not specify the data structure.
 
 # Index
 
@@ -17,6 +23,7 @@ An application to help users manage their finances, focusing on balancing paymen
 - [Data Page](#data-page)
 - [Utils Page](#utils-page)
 - [Ticket](#ticket)
+  - [Trivial or Notable Ticket](#trivial-or-notable-ticket)
   - [Log Ticket](#log-ticket)
   - [Display Ticket](#display-ticket)
   - [Schedule Ticket](#schedule-ticket)
@@ -57,13 +64,14 @@ The `Calendar view Screen` consists of a virtually infinite set of monthly calen
 A monthly calendar consists of year-label, month-label and dates which is arrenged in ordinal way.
 `Ticket`s on a date is reflected as a color of the date:
 
-- noTicket(gray): there is no `Ticket` on the date.
-- periodicTicket(white/black): there is(are) periodic `Ticket`(s) on the date.
-- Ticket(theme): there is(are) `Ticket`(s) on the date.
+- noTicket(disabled color): there is no `Ticket` on the date.
+- trivialTicket(secondary color): there is(are) tirivial `Ticket`(s) on the date.
+- notableTicket(primary color): there is(are) notable `Ticket`(s) on the date.
 
 Each date is button which leads to `Daily view Screen`.
 
-- [What a `Ticket` belonging to a date means?](#ticket)
+- [What 'There is a `Ticket` on a date' means?](#ticket)
+- [What is a notable/trivial `Ticket`?](#trivial-or-notable-ticket)
 
 ### visual image
 
@@ -153,7 +161,6 @@ General flow is:
       - Press `Confirm button`
       - Press `Edit button`
         - `Ticket edit Window`
-      - Press `Reject button`
   - Press `Log Button`
     - `Log information Window`
 
@@ -161,21 +168,15 @@ General flow is:
 
 `Data Page` contains:
 
-- `Statistical information Section`
 - `Table`
 - `Data im/export Button`.
 
 `Data Page` itself is scrollable in any direction.
 
-`Statistical information Section` comes before `Table`, and `Data im/export Button` is a floating button.
-
-`Statistical information Section` show the statistical information:
-
-- Summation of all estate
-
 `Table` shows all of `Receipt Data` in a table format.
 Pressing a row, user can open corresponding (log) `Tikcet edit Window`.
 
+`Data im/export Button` is a floating button.
 Pressing `Data im/export Button` opens `Data im/export Window`.
 The window contains:
 
@@ -185,11 +186,24 @@ The window contains:
 - `App data backup Button`
 - `App data restore Button`
 
+- `Receipt data export Button`
+- `Receipt data import Button`
+- `Receipt data override Button`
+are used to cooperates with external tools like GoogleSpreadSheets.
+Thus, it handls with `.csv` format.
+
+- `App data backup Button`
+- `App data restore Button`
+are used to backup application data.
+Raw database file `.db` and preference file `.json` are exploited from application when backup button pressed.
+On the other hand, restore button calls window to load `.db` file and `.json` file.
+
 # Utils Page
 
 `Utils Page` contains:
 
 - `Category controller Section`
+- `Tentative display ticket Section`
 - `Chart Section`
 
 In `Category controller Section`, categories can be
@@ -201,30 +215,43 @@ In `Category controller Section`, categories can be
 `Category controller Section` provides list of categories and `Category Create Button`.
 
 When a category is pressed, it opens `Category edit Window`.
-On `Category edit Window`, users can rename the category by rewriting an inline-text form. And there are pull-down menus that show the list of categories, and an `Integration Button` whose label is 'Integrate with'.
+On `Category edit Window`, users can rename the category by rewriting an inline-text form. And there are pull-down menus that show the list of categories, and an `Integration Button`.
 
 Pressing the `Integration Button` opens a `Confirmation Dialog` which has a `Confirm Button` and a `Cancel Button`.
 
 When the `Category Create Button` is pressed, the `Category Create Window` opens.
 The `Category Create Window` merely contains an inline-text form for its name, a `Create Button`, and a `Cancel Button`.
 
-In the `Chart Section`, users can generate accumulation charts that indicate the increase and decrease of the gross estate for specific categories or all categories over time.
-Users are also able to generate subtotal charts which show the total amounts per month.
+In the `Chart Section`, users can generate:
+
+- accumulation charts
+  - that indicate the increase and decrease of the gross estate for specific categories or all categories over time.
+- subtotal charts
+  - which show the total amounts per month.
+- A pie chart
+  - that shows ratio of absolute values of target categories.
+
+`Tentative display ticket Section` show the statistical information as `Display Ticket`s do.
+
+Above all is folded at first, and user can expand them when they needs to do so.
+
+- [what is `Display Ticket`s](#display-ticket)
 
 # Ticket
 
-`Ticket` appears in Scheduling Page and Ticket Page.
+`Ticket` appears in `Scheduling Page`, `Ticket Page` and `Utils Page`.
 
 `Ticket`s are classified into four types:
 
-- Log Ticket
-- Display Ticket
-- Schedule Ticket
-- Estimation Ticket
+- `Log Ticket`
+- `Display Ticket`
+- `Schedule Ticket`
+- `Estimation Ticket`
 
 A `Ticket` is a standardized interface to present/edit information.
 
-A `Ticket` belongs to some days. That means, it appears on the corresponding date on the `Scheduling Page`.
+When there is a `Ticket` on a date, the `Ticket` appears on the date in the `Scheduling Page`.
+This situation will be explained as a `Ticket` `belongs` to some date below.
 
 On `Scheduling Page/Ticket Container`, `Display Ticket` appears at first.
 Then `Schedule Ticket`, `Estimation Ticket` and `Log Ticket` follow in order.
@@ -232,9 +259,22 @@ Then `Schedule Ticket`, `Estimation Ticket` and `Log Ticket` follow in order.
 On `Ticket Page/Ticket Container`, `Display Ticket` appears at first.
 Then `Schedule Ticket` and `Log Ticket` follow in order.
 
+On `Utils Page`, single `Display Ticket` appears as a `Tentative Display Ticket`.
+
+## Trivial or Notable Ticket
+
+`Notable Ticket`s are following ones:
+
+- `Schedule Tickets` which are the last or the first ones of thier group
+- `Display Tickets` which are the last ones of thier group
+- `Estimation Tickets` which are the last or first ones of their group
+- Unconfirmed `Log Tickets`.
+
+The other tickets are all `Trivial`.
+
 ## Log Ticket
 
-A Log Ticket allows users to confirm and edit logged `Receipt Data`. A Log Ticket contains the following details:
+A Log Ticket allows users to confirm and edit logged `Receipt Data`. A Log Ticket contains the following details to represents `Receipt Data`:
 
 - Item's (receipt's) category
 - Supplementary information
@@ -245,15 +285,16 @@ A Log Ticket allows users to confirm and edit logged `Receipt Data`. A Log Ticke
   - updatable in `Ticket edit Window`
 
 When pressed in `Ticket Page`, `Confirmation Dialog` opens.
-`Confirmation Dialog` has `Confirm button`, `Edit button`.
-It automatically disappers from `Ticket Page` in some days.
+`Confirmation Dialog` has `Confirm button` and `Edit button`.
+It automatically dismissed and disappers from `Ticket Page` in some days.
 
-When `Confirm button` is pressed, the ticket disappears from the `Ticket Page`.
-When edit button is pressed, the `Ticket edit Window` opens, allowing users to edit the information above.
+When `Confirm button` is pressed, the ticket disappears from the `Ticket Page` immediately.
+When `Edit button` is pressed, the `Ticket edit Window` opens, allowing users to edit the information above.
 
 When pressed in `Scheduling Page`, it opens `Ticket edit Widnow`.
 
-This ticket belongs to `Registration date`.
+The ticket `belongs` to `Registration date`.
+That means, the tickets appears on the `Registration date` on the `Scheduling Page`.
 
 Note that, single ticket only belongs to single category.
 
@@ -261,16 +302,18 @@ Note that, single ticket only belongs to single category.
 
 A Display Ticket allows users to check the situation.
 
-Display Ticket has 3 Term Modes:
+Display Ticket has 4 Term Modes:
 
 - Until today
 - Last designated period
 - Until a designated date
+- Specific period
 
 For each term-mode, there are some options.
 
 On `Until today`:
 On `Last designated period`:
+On `Specific period`:
 
 - daily average
 - daily quartile average
@@ -289,11 +332,15 @@ Both on the `Scheduling Page` and on the `Ticket Page`, it opens `Ticket edit Wi
 
 On `Until today` and `Last designated period`:
 
-Display Ticket belongs to all days, that means, the Ticket appears in all days of `Ticket Container`.
+Display Ticket `belongs` to all days, that means, the Ticket appears in all days of `Ticket Container`.
+
+On `Specific period`:
+
+Display Ticket `belongs` to the period.
 
 On `Until a designated date`:
 
-Display Ticket belongs to all days until the date, that means, the Ticket only appears until the date.
+Display Ticket `belongs` to all days until the date, that means, the Ticket only appears until the date.
 
 For `Last designated period`, there are period-options:
 
@@ -302,11 +349,13 @@ For `Last designated period`, there are period-options:
 - half-year
 - year
 
+For `Specific period`, finite period should be specified.
+
 ## Schedule Ticket
 
 `Schedule Ticket` basically exists for estimation. But it also omit the users' labor to register ticket by their own.
 
-On `Scheduling Page`, `Schedule Ticket` appears on the date to which it belongs.
+On `Scheduling Page`, `Schedule Ticket` appears on the date to which it `belongs`.
 When it pressed, `Ticket edit Window` opens.
 
 On `Ticket Page`, its function is just like `Log Ticket`.
@@ -374,10 +423,12 @@ Each `Receipt Data` should have **a single** `Category`.
 - Transportation
 - EducationFee
 - EducationMaterials
+- Medication
 - Amusument
 - Furniture
 - Necessities
 - OtherExpense
 - Scholarship
 - Payment
+- OtherIncome
 - Ajustment

@@ -3,12 +3,24 @@ import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:miraibo/component/ticket_configurator.dart';
 
-import 'package:miraibo/component/motion.dart';
-import 'package:miraibo/component/ticket.dart';
-import 'package:miraibo/data/handler.dart';
-import 'package:miraibo/data/ticket_data.dart';
+import 'package:miraibo/ui/component/display_ticket_configurator.dart';
+import 'package:miraibo/ui/component/estimation_ticket_configurator.dart';
+import 'package:miraibo/ui/component/schedule_ticket_configurator.dart';
+import 'package:miraibo/ui/component/log_ticket_configurator.dart';
+import 'package:miraibo/ui/component/applied_ticket_configurator.dart';
+import 'package:miraibo/ui/component/ticket_configurator_shared_traits.dart';
+import 'package:miraibo/ui/component/motion.dart';
+import 'package:miraibo/ui/component/ticket.dart';
+
+import 'package:miraibo/model/modelSurface/date_button_handler.dart';
+import 'package:miraibo/model/modelSurface/display_handler.dart';
+import 'package:miraibo/model/modelSurface/estimation_handler.dart';
+import 'package:miraibo/model/modelSurface/log_handler.dart';
+import 'package:miraibo/model/modelSurface/schedule_handler.dart';
+
+import 'package:miraibo/util/date_time.dart';
+import 'package:miraibo/type/enumarations.dart';
 
 /* 
 SchedulingPage has two screens: MonthlyScreen and DailyScreen
@@ -40,7 +52,7 @@ class _SchedulingPageState extends State<SchedulingPage> {
     });
   }
 
-  DateTime _shownDate = DateTime.now();
+  DateTime _shownDate = today();
 
   void setShownDate(DateTime date) {
     _shownDate = date;
@@ -310,16 +322,14 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
   // <makeDateButtons> Fetching data is needed to calclating styles for DateButtons; it is done in a separate thread.
 
   Future<List<DateButton>> makeDateButtons() async {
-    List<DateButton> result = [];
+    List<Future<DateButton>> futureBuffer = [];
     for (int i = 0; i < daysInMonth; i++) {
-      await Future.delayed(
-          Duration(milliseconds: 30)); // allow other tasks to run
-      result.add(await DateButton.make(
+      futureBuffer.add(DateButton.make(
           DateTime(widget.forThisDate.year, widget.forThisDate.month, i + 1),
           widget.setShownDate,
           widget.switchToDailyScreen));
     }
-    return result;
+    return Future.wait(futureBuffer);
   }
   // </makeDateButtons>
 
@@ -416,13 +426,6 @@ Its main function is to switch to DailyScreen when it is clicked.
 DataButtons vary in style based on data existance.
 So, it should handle Future-Object to consult a data provider.
 */
-
-enum DateButtonStyle {
-  hasNothing,
-  hasPeriodicEvent,
-  hasSpecialEvent,
-}
-
 class DateButton extends StatelessWidget {
   final DateTime date;
   final void Function(DateTime) setShownDate;
@@ -436,7 +439,7 @@ class DateButton extends StatelessWidget {
         date: date,
         setShownDate: setShownDate,
         switchToDailyScreen: switchToDailyScreen,
-        style: await TicketDataFetcher().calcStyleForDateButton(date));
+        style: await DateButtonHandler().fetchStyleFor(date));
   }
 
   const DateButton({
@@ -472,13 +475,13 @@ class DateButton extends StatelessWidget {
       case DateButtonStyle.hasNothing:
         return button(context, Theme.of(context).colorScheme.surface,
             Theme.of(context).disabledColor, Theme.of(context).disabledColor);
-      case DateButtonStyle.hasPeriodicEvent:
+      case DateButtonStyle.hasTrivialEvent:
         return button(
             context,
             Theme.of(context).colorScheme.surface,
             Theme.of(context).colorScheme.primary,
             Theme.of(context).colorScheme.primary);
-      case DateButtonStyle.hasSpecialEvent:
+      case DateButtonStyle.hasNotableEvent:
         return button(
             context,
             Theme.of(context).colorScheme.primaryContainer,
@@ -777,63 +780,77 @@ class TicketContainer extends StatelessWidget {
   Future<Widget> listOfTickets(BuildContext context) async {
     await Future.delayed(
         const Duration(milliseconds: 600)); // allow other tasks to run
+    List<Future<List<Widget>>> futureBuffer = [];
+    futureBuffer.add((() async {
+      return [
+        for (var displayTicket in await DisplayHandler().belongsTo(forThisDate))
+          DisplayTicket(
+              onPressed: () {
+                var controller =
+                    DisplayTicketConfigSectionController(record: displayTicket);
+                showDataEditWindow(
+                  context,
+                  DisplayTicketConfigSection(sectionController: controller),
+                  controller,
+                );
+              },
+              data: displayTicket)
+      ];
+    })());
+    futureBuffer.add((() async {
+      return [
+        for (var scheduleTicket
+            in await ScheduleHandler().belongsTo(forThisDate))
+          ScheduleTicket(
+              onPressed: () {
+                var controller = ScheduleTicketConfigSectionController(
+                    record: scheduleTicket);
+                showDataEditWindow(
+                  context,
+                  ScheduleTicketConfigSection(sectionController: controller),
+                  controller,
+                );
+              },
+              data: scheduleTicket)
+      ];
+    })());
+    futureBuffer.add((() async {
+      return [
+        for (var estimationTicket
+            in await EstimationHandler().belongsTo(forThisDate))
+          EstimationTicket(
+              onPressed: () {
+                var controller = EstimationTicketConfigSectionController(
+                    record: estimationTicket);
+                showDataEditWindow(
+                  context,
+                  EstimationTicketConfigSection(sectionController: controller),
+                  controller,
+                );
+              },
+              data: estimationTicket)
+      ];
+    })());
+    futureBuffer.add((() async {
+      return [
+        for (var logTicket in await LogHandler().belongsTo(forThisDate))
+          LogTicket(
+              onPressed: () {
+                var controller =
+                    LogTicketConfigSectionController(record: logTicket);
+                showDataEditWindow(
+                  context,
+                  LogTicketConfigSection(sectionController: controller),
+                  controller,
+                );
+              },
+              data: logTicket)
+      ];
+    })());
+    var results = await Future.wait(futureBuffer);
     return ListView(
       children: [
-        for (var ticketConfig
-            in await TicketDataFetcher().fetchTicketConfigsFor(forThisDate))
-          switch (ticketConfig) {
-            DisplayTicketRecord() => DisplayTicket(
-                onPressed: () {
-                  var controller = DataEditWindowController();
-                  showDataEditWindow(
-                      controller,
-                      context,
-                      DisplayTicketConfigSection(
-                          controller: controller,
-                          initialConfigData: ticketConfig));
-                },
-                data: ticketConfig),
-            ScheduleRecord() => ScheduleTicket(
-                onPressed: () {
-                  var controller = DataEditWindowController();
-                  showDataEditWindow(
-                      controller,
-                      context,
-                      ScheduleTicketConfigSection(
-                          controller: controller,
-                          initialConfigData: ticketConfig));
-                },
-                data: ticketConfig),
-            EstimationRecord() => EstimationTicket(
-                onPressed: () {
-                  var controller = DataEditWindowController();
-                  showDataEditWindow(
-                      controller,
-                      context,
-                      EstimationTicketConfigSection(
-                          controller: controller,
-                          initialConfigData: ticketConfig));
-                },
-                data: ticketConfig),
-            LogRecord() => LogTicket(
-                onPressed: () {
-                  var controller = DataEditWindowController();
-                  showDataEditWindow(
-                      controller,
-                      context,
-                      LogTicketConfiguraitonSection(
-                          controller: controller,
-                          initialConfigData: ticketConfig));
-                },
-                data: ticketConfig),
-            // lines below should not be reached
-            _ => TicketTemplate(
-                onPressed: () {},
-                ticketKind: 'unknown',
-                topLabel: [],
-                content: [Text('broken ticket config was found')],
-                bottomLabel: [])
-          }
+        for (var res in results) ...res,
       ],
     );
   }
@@ -866,10 +883,10 @@ class TicketCreationButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton(
       onPressed: () {
-        var controller = DataEditWindowController();
-        var configSection = TicketCreationSection(
-            controller: controller, initialDate: getShownDate());
-        showDataEditWindow(controller, context, configSection);
+        var controller = TicketCreationSectionController(date: getShownDate());
+        var configSection =
+            TicketCreationSection(sectionController: controller);
+        showDataEditWindow(context, configSection, controller);
       },
       child: Icon(Icons.add, color: Theme.of(context).colorScheme.primary),
     );

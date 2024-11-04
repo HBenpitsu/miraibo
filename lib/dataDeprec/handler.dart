@@ -1,7 +1,9 @@
-import 'package:miraibo/data/ticket_data.dart';
+import 'package:miraibo/dataDeprec/ticket_data.dart';
 
-import 'package:miraibo/page/scheduling_page.dart';
-import 'package:miraibo/data/category_data.dart';
+import 'package:miraibo/ui/page/scheduling_page.dart';
+import 'package:miraibo/dataDeprec/category_data.dart';
+import 'package:miraibo/util/date_time.dart';
+import 'package:miraibo/type/enumarations.dart';
 
 class TicketDataFetcher {
   TicketDataFetcher._internal();
@@ -25,7 +27,7 @@ class TicketDataFetcher {
         (index) => LogRecord(
             category: Category(name: 'preset $index'),
             supplement: 'preset $index',
-            registorationDate: DateTime.now(),
+            registorationDate: today(),
             amount: 1000,
             image: null));
   }

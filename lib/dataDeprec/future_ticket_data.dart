@@ -1,8 +1,10 @@
+import 'package:miraibo/background_worker/future_ticket_preparation.dart';
+import 'package:miraibo/util/date_time.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:miraibo/data/database.dart';
-import 'package:miraibo/data/ticket_data.dart';
-import 'package:miraibo/data/category_data.dart';
-import 'package:miraibo/data/general_enum.dart';
+import 'package:miraibo/dataDeprec/database.dart';
+import 'package:miraibo/dataDeprec/ticket_data.dart';
+import 'package:miraibo/dataDeprec/category_data.dart';
+import 'package:miraibo/dataDeprec/general_enum.dart';
 
 // This mixin marks up classes that can be used as a factory for future tickets.
 // It is introduced to avoid the use of dynamic types.
@@ -25,14 +27,6 @@ class FutureTicket extends DTO {
     required this.scheduledAt,
     required this.amount,
   });
-
-  LogRecord asLogPreset() {
-    return LogRecord(
-        category: category,
-        supplement: supplement,
-        registorationDate: scheduledAt,
-        amount: amount.toInt());
-  }
 }
 
 class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
@@ -135,35 +129,37 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
   }
 
   Future<void> eliminateAllByFactory(
-      int id, Table<FutureTicketFactory> kind, Transaction? txn) async {
+      int factoryId, Table<FutureTicketFactory> kind, Transaction? txn) async {
     if (txn == null) {
       return dbProvider.db.transaction((txn) async {
-        return eliminateAllByFactory(id, kind, txn);
+        return eliminateAllByFactory(factoryId, kind, txn);
       });
     }
 
     var whereStatement = switch (kind) {
-      Table<ScheduleRecord> _ => '$scheduleField = $id',
-      Table<EstimationRecord> _ => '$estimationField = $id',
+      Table<ScheduleRecord> _ => '$scheduleField = $factoryId',
+      Table<EstimationRecord> _ => '$estimationField = $factoryId',
       _ => UnimplementedError('The factory kind $kind is not supported.'),
     };
 
     return txn.execute('DELETE FROM $tableName WHERE $whereStatement;');
   }
 
-  Future<void> updateAllByFactory(FutureTicketFactory factoryTicket,
-      FutureTicket template, Transaction? txn) async {
+  Future<void> updateAllByFactory(
+      int factoryId,
+      Table<FutureTicketFactory> kind,
+      FutureTicket template,
+      Transaction? txn) async {
     if (txn == null) {
       return dbProvider.db.transaction((txn) async {
-        return updateAllByFactory(factoryTicket, template, txn);
+        return updateAllByFactory(factoryId, kind, template, txn);
       });
     }
 
-    var whereStatement = switch (factoryTicket) {
-      ScheduleRecord schedule => '$scheduleField = ${schedule.id}',
-      EstimationRecord estimation => '$estimationField = ${estimation.id}',
-      _ =>
-        UnimplementedError('The factory kind $factoryTicket is not supported.'),
+    var whereStatement = switch (kind) {
+      Table<ScheduleRecord> _ => '$scheduleField = $factoryId',
+      Table<EstimationRecord> _ => '$estimationField = $factoryId',
+      _ => UnimplementedError('The factory kind $kind is not supported.'),
     };
 
     return txn.execute('''
@@ -176,18 +172,37 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
           ''');
   }
 
-  Future<List<ScheduleRecord>> fetchTodaysSchedule(Transaction? txn) async {
+  Future<List<FutureTicket>> fetchAllByFactory(
+      int factoryId, Table<FutureTicketFactory> kind, Transaction? txn) async {
     if (txn == null) {
       return dbProvider.db.transaction((txn) async {
-        return fetchTodaysSchedule(txn);
+        return fetchAllByFactory(factoryId, kind, txn);
       });
     }
 
-    var today = dateToInt(DateTime.now())!;
+    var whereStatement = switch (kind) {
+      Table<ScheduleRecord> _ => '$scheduleField = $factoryId',
+      Table<EstimationRecord> _ => '$estimationField = $factoryId',
+      _ => UnimplementedError('The factory kind $kind is not supported.'),
+    };
+
+    var result = await txn.rawQuery('''
+      SELECT * FROM $tableName WHERE $whereStatement;
+    ''');
+    return Future.wait([for (var row in result) interpret(row, txn)]);
+  }
+
+  Future<List<ScheduleRecord>> fetchSchedulesFor(
+      DateTime date, Transaction? txn) async {
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return fetchSchedulesFor(date, txn);
+      });
+    }
 
     var query = '''
       SELECT $scheduleField FROM $tableName
-      WHERE DATE($scheduledAtField) = DATE($today)
+      WHERE $scheduledAtField = ${dateToInt(date)!}
         AND $scheduleField IS NOT NULL;
     ''';
     var result = await txn.rawQuery(query);
@@ -195,6 +210,22 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
     var scheduleTable = await ScheduleTable.use(txn);
     return scheduleTable
         .fetchByIds([for (var rec in result) rec[scheduleField] as int], txn);
+  }
+
+  Future<List<FutureTicket>> fetchTicketsFor(
+      DateTime date, Transaction? txn) async {
+    if (txn == null) {
+      return dbProvider.db.transaction((txn) async {
+        return fetchTicketsFor(date, txn);
+      });
+    }
+
+    var query = '''
+      SELECT * FROM $tableName
+      WHERE $scheduledAtField = ${dateToInt(date)!};
+    ''';
+    var result = await txn.rawQuery(query);
+    return Future.wait([for (var row in result) interpret(row, txn)]);
   }
 
   Future<void> cleanUp(Transaction? txn) async {
@@ -206,7 +237,7 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
 
     return txn.execute('''
           DELETE FROM $tableName
-          WHERE $scheduledAtField < ${dateToInt(DateTime.now())};
+          WHERE $scheduledAtField < ${dateToInt(today())};
         ''');
   }
 
@@ -217,6 +248,10 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
       return dbProvider.db.transaction((txn) async {
         return _insertTicketsAtOnce(ticketTemplate, schedules, txn);
       });
+    }
+
+    if (schedules.isEmpty) {
+      return;
     }
 
     var sql = '''
@@ -241,8 +276,7 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
           '${ticketTemplate.supplement}', 
           ${dateToInt(date)}, 
           ${ticketTemplate.amount}
-        ),
-      ''';
+        ),''';
     }
 
     // remove the last comma and add a semicolon
@@ -253,8 +287,13 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
 
   Future<void> makeTicketsEveryday(FutureTicket ticketTemplate, DateTime from,
       DateTime to, Transaction? txn) async {
-    await makeTicketsWithInterval(
-        ticketTemplate, from, to, Duration(days: 1), txn);
+    var schedules = <DateTime>[];
+    for (var current = from;
+        current.isBefore(to);
+        current = current.add(Duration(days: 1))) {
+      schedules.add(current);
+    }
+    await _insertTicketsAtOnce(ticketTemplate, schedules, txn);
   }
 
   Future<void> makeWeeklyTickets(FutureTicket ticketTemplate, DateTime from,
@@ -265,20 +304,25 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
       current = current.add(Duration(days: 1));
     }
 
-    await makeTicketsWithInterval(
-        ticketTemplate, current, to, Duration(days: 7), txn);
+    var schedules = <DateTime>[];
+    while (current.isBefore(to)) {
+      schedules.add(current);
+      current = current.add(Duration(days: 7));
+    }
+
+    await _insertTicketsAtOnce(ticketTemplate, schedules, txn);
   }
 
   Future<void> makeHeadOriginMonthlyTickets(FutureTicket ticketTemplate,
       DateTime from, DateTime to, Duration offset, Transaction? txn) async {
     var current = DateTime(from.year, from.month, 1);
-    current.add(offset);
+    current = current.add(offset);
 
     var schedules = <DateTime>[];
     while (current.isBefore(to)) {
       schedules.add(current);
       current = DateTime(current.year, current.month + 1, 1);
-      current.add(offset);
+      current = current.add(offset);
     }
 
     await _insertTicketsAtOnce(ticketTemplate, schedules, txn);
@@ -301,13 +345,12 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
 
   Future<void> makeAnnualTickets(FutureTicket ticketTemplate, DateTime from,
       DateTime to, Transaction? txn) async {
-    var current = DateTime(from.year, ticketTemplate.scheduledAt.month,
-        ticketTemplate.scheduledAt.day);
-
     var schedules = <DateTime>[];
-    while (current.isBefore(to)) {
+    for (var current = DateTime(from.year, ticketTemplate.scheduledAt.month,
+            ticketTemplate.scheduledAt.day);
+        current.isBefore(to);
+        current = DateTime(current.year + 1, current.month, current.day)) {
       schedules.add(current);
-      current = DateTime(current.year + 1, current.month, current.day);
     }
 
     await _insertTicketsAtOnce(ticketTemplate, schedules, txn);
@@ -316,6 +359,24 @@ class FutureTicketTable extends Table<FutureTicket> with HaveCategoryField {
   Future<void> makeTicketsWithInterval(FutureTicket ticketTemplate,
       DateTime from, DateTime to, Duration interval, Transaction? txn) async {
     var current = from;
+
+    // Adjusting the current time for the sequence to contain the scheduled time.
+    var desiredOffset = ticketTemplate.scheduledAt.millisecondsSinceEpoch %
+        interval.inMilliseconds;
+    var currentOffset =
+        current.millisecondsSinceEpoch % interval.inMilliseconds;
+    current = DateTime.fromMillisecondsSinceEpoch(
+        current.millisecondsSinceEpoch -
+            currentOffset +
+            desiredOffset -
+            interval.inMilliseconds);
+    // now, current is surely before the scheduled time.
+    // and ajusted.
+
+    while (current.isBefore(from)) {
+      current = current.add(interval);
+    }
+
     var schedules = <DateTime>[];
     while (current.isBefore(to)) {
       schedules.add(current);
@@ -342,71 +403,59 @@ class FutureTicketPreparationState extends NoSQL {
   }
   // </constructor>
 
-  // <tickets needed until>
   static const String _keyTicketsNeededUntil = 'ticketNeededUntil';
-
   Future<DateTime> getNeededUntil() async {
-    var val = await prefs.getInt(_keyTicketsNeededUntil);
+    var val = await prefs!.getInt(_keyTicketsNeededUntil);
     if (val == null) {
-      return DateTime.now();
+      return farPast();
     } else {
       return DateTime.fromMillisecondsSinceEpoch(val);
     }
   }
 
   /// This only updates the date if the date is later than the currently stored date.
-  Future<void> updateNeededUntil(DateTime date) async {
-    var val = await prefs.getInt(_keyTicketsNeededUntil);
+  Future<void> needsUntil(DateTime date) async {
+    var val = await prefs!.getInt(_keyTicketsNeededUntil);
     if (val == null || val < date.millisecondsSinceEpoch) {
-      await prefs.setInt(_keyTicketsNeededUntil, date.millisecondsSinceEpoch);
+      await prefs!.setInt(_keyTicketsNeededUntil, date.millisecondsSinceEpoch);
+      var handler = FutureTicketPreparationEventHandler();
+      await handler.onExpansionRequired(date, null);
     }
   }
-  // </tickets needed until>
 
-  // <tickets prepared until>
   static const String _keyTicketsPreparedUntil = 'ticketsPreparedUntil';
-
   Future<DateTime> getPreparedUntil() async {
-    var val = await prefs.getInt(_keyTicketsPreparedUntil);
+    var val = await prefs!.getInt(_keyTicketsPreparedUntil);
     if (val == null) {
-      return DateTime.now();
+      return farPast();
     } else {
       return DateTime.fromMillisecondsSinceEpoch(val);
     }
   }
 
   Future<void> setPreparedUntil(DateTime date) async {
-    await prefs.setInt(_keyTicketsPreparedUntil, date.millisecondsSinceEpoch);
+    await prefs!.setInt(_keyTicketsPreparedUntil, date.millisecondsSinceEpoch);
   }
-  // </tickets prepared until>
 
-  // <tickets preparing>
   static const String _keyTicketsPreparing = 'ticketsPreparing';
   Future<DateTime> getPreparingUntil() async {
-    var val = await prefs.getInt(_keyTicketsPreparing);
+    var val = await prefs!.getInt(_keyTicketsPreparing);
     if (val == null) {
-      return DateTime.now();
+      return farPast();
     } else {
       return DateTime.fromMillisecondsSinceEpoch(val);
     }
   }
 
   Future<void> setPreparingUntil(DateTime date) async {
-    await prefs.setInt(_keyTicketsPreparing, date.millisecondsSinceEpoch);
+    await prefs!.setInt(_keyTicketsPreparing, date.millisecondsSinceEpoch);
   }
-  // </tickets preparing>
 
-  // <tickets prepared>
-  static const String _keyTicketsPrepared = 'ticketsPrepared';
-  // TODO: rewrite this to return the value according to preparingUntil and preparedUntil
   Future<bool> getTicketsPrepared() async {
-    return await prefs.getBool(_keyTicketsPrepared) ?? false;
+    var needed = await getNeededUntil();
+    var prepared = await getPreparedUntil();
+    return needed.isBefore(prepared);
   }
-
-  Future<void> setTicketsPrepared(bool val) async {
-    await prefs.setBool(_keyTicketsPrepared, val);
-  }
-  // </tickets prepared>
 }
 
 // <dispached tasks>
