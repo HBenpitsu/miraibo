@@ -17,30 +17,30 @@ Model layer is devided into sublayers:
 Addtionaly, there is a `commander` layer that is used to invoke event of UI-layer from Model-layer.
 Because Model-layer can not call method on UI-layer directly, a mediator is needed.
 
-## List up all layers
+Note:
+Althoguh there are directories named `type` and `util`, they do not represent any layers (of software architecture).
 
-- commander
-- view
-- controller
-- model
-  - model-surface
-  - worker
-  - transaction
-  - infrastructure
+## dependancy-chain
 
-## depend/call-chain
+    View<-Entry point
+     |
+Controller
+|    |
+|   Model (Surface)
+|         |
+|         ^
+|         |
+| worker<-|- Entry point
+| |  |    |
+| | transaction
+| |       |
+commander |
+          |
+    infrastructure
 
-commander <-bind- controller
-view <-passed- controller
-view -call-> controller
-view -call-> model-surface
-controller -call-> model-surface
-model-surface -call-> worker
-model-surface -call-> transaction
-worket -call-> transaction
-transaction -expand-> infrastructure
+To keep this figure true, there are some specific rules.
+Check out `conding-rules.md`.
 
-# note
+# details and responsibilities of each layer
 
-Data Transfer objects are strictly divided between UI layer and Model layer.
-UI layer's DTOs are defined in `view_obj.dart` and Model layer's DTOs are defined in `model_obj.dart`.
+

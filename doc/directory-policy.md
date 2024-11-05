@@ -5,8 +5,6 @@
 
 To keep the project organized, we need to arrange files in a consistent way. The specific method for organizing files in the `lib` directory and the abstractions of these directories are explained below.
 
-# lib
-
 In `lib`, there are seveal entries;
 
 - main.dart
@@ -46,7 +44,3 @@ Because `model` layer should not dependent on the `ui` layer, it is impossible t
 When `model` layer want to invoke `ui` event, it requires a `commander` to invoke event.
 
 For more detail of features and responsibilities of each sublayer, check out `project-design.md`.
-
-# doc
-
-In `doc` directory, general documents are located.
