@@ -1,10 +1,20 @@
 
-(confirmed on 30th Nov 2024)
+(confirmed on 4th Dec 2024)
 
 # Coding Rules
 
 This document lists up coding rules.
-The background of these rules is descripted in `project-design.md`.
+The background of these rules is described in `project-design.md`.
+
+# Controller
+
+- There should be `RootController` and all controllers should be derived from it. In other words, `Controller`s should be managed by `Controller`s.
+	- It should form a tree which is like widget tree (not exactly same though)
+
+# View
+
+- Make state smaller. 
+- make sure all states are managed by some controller.
 
 # View and Controller
 
@@ -36,7 +46,7 @@ The background of these rules is descripted in `project-design.md`.
 # Transaction and Infrastructure
 
 - There are two directories for `Transaction`-layer: `transaction` and `subtransaction`. Put files that contain `methods` called by surface directly into `transaction`. Put methods that are called by the other `transaction`-method into `subtransaction`.
-- `Transaction`-class and `Subtransaction`-class are defined in `infrastracture`-layer. Use them.
+- `TransactionProvider`-class and `SubtransactionProvider`-class are defined in `infrastracture`-layer. Use them.
 
 # Commander and Worker
 

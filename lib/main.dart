@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:miraibo/model/transaction/tentative_transaction_expand.dart';
 import 'package:miraibo/ui/page/scheduling_page.dart';
 import 'package:miraibo/ui/page/ticket_page.dart';
 import 'package:miraibo/ui/page/data_page.dart';
 import 'package:miraibo/ui/page/utils_page.dart';
 import 'package:miraibo/ui/component/motion.dart';
+import 'package:miraibo/ui/component/modal_controller.dart';
 import 'package:miraibo/model/transaction/initialize_database.dart';
 
 /* 
 This is the entry point of the application. 
 */
 void main() async {
-  await InitMainDatabase().execute();
-  await TentativeExpand().execute();
   runApp(const MyApp());
 }
 
@@ -21,6 +19,18 @@ void main() async {
 //   RelationalDatabaseProvider dbProvider = MainDatabaseProvider();
 //   await dbProvider.clear();
 // }
+
+// RootController is a controller which has all the controllers as tree structure.
+class RootController {
+  final SchedulingPageController schedulingPageController =
+      SchedulingPageController();
+  final ModalController modalController = ModalController();
+  Future<void> initializeModel() async {
+    await InitMainDatabase().execute();
+  }
+}
+
+final rootController = RootController();
 
 /* 
 This widget is the root of the application.
@@ -41,8 +51,29 @@ class MyApp extends StatelessWidget {
             seedColor: const Color.fromARGB(255, 255, 203, 91)),
         useMaterial3: true,
       ),
-      home: const MyTabView(),
+      home: FutureBuilder(
+        future: rootController.initializeModel(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const AppLoadingScreen();
+          }
+          return const MyTabView();
+        },
+      ),
     );
+  }
+}
+
+/*
+Until the model is initialized, this widget displays a Loading Screen rather than black screen.
+*/
+
+class AppLoadingScreen extends StatelessWidget {
+  const AppLoadingScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: Center(child: Text('Miraibo')));
   }
 }
 
@@ -56,7 +87,7 @@ class MyTabView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
         body: SafeArea(
             child: DefaultTabController(
                 length: 4,
@@ -73,7 +104,8 @@ class MyTabView extends StatelessWidget {
                     Expanded(
                       child: TabBarView(
                         children: [
-                          SchedulingPage(),
+                          SchedulingPage(
+                              ctl: rootController.schedulingPageController),
                           TicketPage(),
                           DataPage(),
                           UtilsPage(),

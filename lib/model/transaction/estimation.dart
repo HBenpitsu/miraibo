@@ -78,7 +78,6 @@ class FetchEstimationForDate extends TransactionProvider<List<Estimation>> {
   }
 }
 
-// TODO: clean up AROUND HERE
 class FetchCategoriesForEstimation extends TransactionProvider<List<Category>> {
   final int estimationId;
 
@@ -100,5 +99,20 @@ class FetchCategoriesForEstimation extends TransactionProvider<List<Category>> {
       categories.add(Category.interpret(queryResult.first));
     }
     return categories;
+  }
+}
+
+class CalculateEstimationContent extends TransactionProvider<int> {
+  final Estimation estimation;
+
+  CalculateEstimationContent(this.estimation);
+
+  @override
+  RelationalDatabaseProvider get dbProvider => MainDatabaseProvider();
+
+  @override
+  Future<int> process(Transaction txn) async {
+    // TODO: implement
+    return 0;
   }
 }

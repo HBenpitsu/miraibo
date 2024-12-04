@@ -23,21 +23,21 @@ class Categories extends Table {
 // </category>
 
 // <display ticket>
-enum DTFE<T> implements FieldEnum {
+enum DisplayTicketFE<T> implements FieldEnum {
   id(IdField()),
   lastInDays(NullableDaysField('lastInDays')),
   periodBegin(NullableDateField('periodBegin')),
   periodEnd(NullableDateField('periodEnd')),
   contentType(EnumField('contentType', DTContentType.values));
 
-  const DTFE(this.val);
+  const DisplayTicketFE(this.val);
   @override
   final Field<T> val;
 }
 
 class DisplayTickets extends Table {
   @override
-  List<FieldEnum> get fieldEnums => DTFE.values;
+  List<FieldEnum> get fieldEnums => DisplayTicketFE.values;
   @override
   String get tableName => 'DisplayTickets';
 }

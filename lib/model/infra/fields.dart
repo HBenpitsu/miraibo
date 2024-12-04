@@ -137,8 +137,10 @@ class DateField extends Field<DateTime> {
   DateTime interpret(Object? value) =>
       DateTime.fromMillisecondsSinceEpoch((value as int) * aDayInMilliseconds);
   @override
-  int serialize(DateTime value) =>
-      value.millisecondsSinceEpoch ~/ aDayInMilliseconds;
+  int serialize(DateTime value) {
+    value = DateTime(value.year, value.month, value.day);
+    return value.millisecondsSinceEpoch ~/ aDayInMilliseconds;
+  }
 }
 
 class NullableDateField extends Field<DateTime?> {
@@ -155,6 +157,7 @@ class NullableDateField extends Field<DateTime?> {
   @override
   int? serialize(DateTime? value) {
     if (value == null) return null;
+    value = DateTime(value.year, value.month, value.day);
     return value.millisecondsSinceEpoch ~/ aDayInMilliseconds;
   }
 }

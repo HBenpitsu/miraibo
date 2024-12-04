@@ -24,7 +24,12 @@ class EstimationHandler {
   }
 
   Future<int> calculate(view_obj.Estimation estimation) async {
-    return 0;
+    return await CalculateEstimationContent(model_obj.Estimation(
+      id: estimation.id,
+      contentType: estimation.contentType,
+      periodBegin: estimation.periodBeign,
+      periodEnd: estimation.periodEnd,
+    )).execute();
   }
 
   Future<List<view_obj.Estimation>> belongsTo(DateTime date) async {

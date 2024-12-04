@@ -43,21 +43,29 @@ class DisplayTicket extends Record {
 
   factory DisplayTicket.interpret(Map<String, Object?> row) {
     return DisplayTicket(
-      id: DTFE.id.interpret(row[DTFE.id.fn]),
-      periodInDays: DTFE.lastInDays.interpret(row[DTFE.lastInDays.fn]),
-      startDate: DTFE.periodBegin.interpret(row[DTFE.periodBegin.fn]),
-      endDate: DTFE.periodEnd.interpret(row[DTFE.periodEnd.fn]),
-      contentType: DTFE.contentType.interpret(row[DTFE.contentType.fn]),
+      id: DisplayTicketFE.id.interpret(row[DisplayTicketFE.id.fn]),
+      periodInDays: DisplayTicketFE.lastInDays
+          .interpret(row[DisplayTicketFE.lastInDays.fn]),
+      startDate: DisplayTicketFE.periodBegin
+          .interpret(row[DisplayTicketFE.periodBegin.fn]),
+      endDate: DisplayTicketFE.periodEnd
+          .interpret(row[DisplayTicketFE.periodEnd.fn]),
+      contentType: DisplayTicketFE.contentType
+          .interpret(row[DisplayTicketFE.contentType.fn]),
     );
   }
 
   @override
   Map<String, Object?> serialize() {
     return {
-      DTFE.lastInDays.fn: DTFE.lastInDays.serialize(periodInDays),
-      DTFE.periodBegin.fn: DTFE.periodBegin.serialize(startDate),
-      DTFE.periodEnd.fn: DTFE.periodEnd.serialize(endDate),
-      DTFE.contentType.fn: DTFE.contentType.serialize(contentType),
+      DisplayTicketFE.lastInDays.fn:
+          DisplayTicketFE.lastInDays.serialize(periodInDays),
+      DisplayTicketFE.periodBegin.fn:
+          DisplayTicketFE.periodBegin.serialize(startDate),
+      DisplayTicketFE.periodEnd.fn:
+          DisplayTicketFE.periodEnd.serialize(endDate),
+      DisplayTicketFE.contentType.fn:
+          DisplayTicketFE.contentType.serialize(contentType),
     };
   }
 }

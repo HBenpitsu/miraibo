@@ -18,6 +18,9 @@ import 'package:miraibo/model/model_surface/display_handler.dart';
 import 'package:miraibo/model/model_surface/estimation_handler.dart';
 import 'package:miraibo/model/model_surface/log_handler.dart';
 import 'package:miraibo/model/model_surface/schedule_handler.dart';
+import 'package:miraibo/model/model_surface/prediction_handler.dart';
+
+import 'package:miraibo/type/view_obj.dart' as data;
 
 import 'package:miraibo/util/date_time.dart';
 import 'package:miraibo/type/enumarations.dart';
@@ -27,11 +30,57 @@ SchedulingPage has two screens: MonthlyScreen and DailyScreen
 The main function of SchedulingPage is to switch between these two screens
 */
 
+class SchedulingPageController {
+  late final PredictionController predictionController;
+  late final MonthlyScreenController monthlyScreenController;
+  late final DailyScreenController dailyScreenController;
+
+  SchedulingPageController() {
+    predictionController = PredictionController(this);
+    monthlyScreenController = MonthlyScreenController(this);
+    dailyScreenController = DailyScreenController(this);
+  }
+
+  late void Function() onMonthlyScreenRequird;
+  late void Function() onDailyScreenRequird;
+
+  void switchToMonthlyScreen() {
+    onMonthlyScreenRequird();
+  }
+
+  void switchToDailyScreen() {
+    dailyScreenController.pivotDate = focusedDate;
+    onDailyScreenRequird();
+  }
+
+  DateTime _focusedDate = today();
+  DateTime get focusedDate => _focusedDate;
+  set focusedDate(DateTime date) {
+    _focusedDate = date;
+    dailyScreenController.updateLabel();
+  }
+}
+
+/* 
+PredictionController is a controller to observe the range of shown dates.
+It is invoked by scrolling the CalendarList/TicketContainerList.
+*/
+
+class PredictionController {
+  final SchedulingPageController superController;
+  PredictionController(this.superController);
+  final handler = PredictionHandler();
+  void rendered(DateTime date) {
+    handler.onDateRendered(date);
+  }
+}
+
 enum Screen { monthly, daily }
 
 class SchedulingPage extends StatefulWidget {
   static const Duration screenSwitchingDuration = Duration(milliseconds: 300);
-  const SchedulingPage({super.key});
+  final SchedulingPageController ctl;
+  const SchedulingPage({super.key, required this.ctl});
 
   @override
   State<SchedulingPage> createState() => _SchedulingPageState();
@@ -40,26 +89,21 @@ class SchedulingPage extends StatefulWidget {
 class _SchedulingPageState extends State<SchedulingPage> {
   Screen _currentScreen = Screen.monthly;
 
-  void switchToMonthlyScreen() {
-    setState(() {
-      _currentScreen = Screen.monthly;
-    });
-  }
-
-  void switchToDailyScreen() {
-    setState(() {
-      _currentScreen = Screen.daily;
-    });
-  }
-
-  DateTime _shownDate = today();
-
-  void setShownDate(DateTime date) {
-    _shownDate = date;
-  }
-
-  DateTime getShownDate() {
-    return _shownDate;
+  @override
+  void initState() {
+    super.initState();
+    widget.ctl.onMonthlyScreenRequird = () {
+      if (!mounted) return;
+      setState(() {
+        _currentScreen = Screen.monthly;
+      });
+    };
+    widget.ctl.onDailyScreenRequird = () {
+      if (!mounted) return;
+      setState(() {
+        _currentScreen = Screen.daily;
+      });
+    };
   }
 
   @override
@@ -68,15 +112,11 @@ class _SchedulingPageState extends State<SchedulingPage> {
         duration: SchedulingPage.screenSwitchingDuration,
         child: _currentScreen == Screen.monthly
             ? MonthlyScreen(
-                initialShownDate: _shownDate,
-                setShownDate: setShownDate,
-                switchToDailyScreen: switchToDailyScreen,
+                ctl: widget.ctl.monthlyScreenController,
               )
             : DailyScreen(
-                initialShownDate: _shownDate,
-                setShownDate: setShownDate,
-                getShownDate: getShownDate,
-                switchToMonthlyScreen: switchToMonthlyScreen));
+                ctl: widget.ctl.dailyScreenController,
+              ));
   }
 }
 
@@ -86,104 +126,96 @@ Main function of MonthlyScreen is to show a list of MonthlyCalendar widgets
 
 And MonthlyScreen should notify Monthlycalendars to start making buttons when its scrolling is setteled.
 */
-class MonthlyScreen extends StatefulWidget {
-  static const Duration buildDelay = Duration(milliseconds: 600);
-  static const Duration settleDelay = Duration(milliseconds: 300);
-  final DateTime initialShownDate;
-  final void Function(DateTime) setShownDate;
-  final void Function() switchToDailyScreen;
+class MonthlyScreenController {
+  final SchedulingPageController superCtl;
+  MonthlyScreenController(this.superCtl);
 
-  const MonthlyScreen({
-    super.key,
-    required this.initialShownDate,
-    required this.setShownDate,
-    required this.switchToDailyScreen,
-  });
-
-  @override
-  State<MonthlyScreen> createState() => _MonthlyScreenState();
-}
-
-class _MonthlyScreenState extends State<MonthlyScreen> {
-  // <scroll speed notifier> It notifies Monthlycalendars to start making buttons when its scrolling is setteled.
-  final List<GlobalKey<_MonthlyCalendarState>> _monthlycalendarKeys = [];
-  bool isSettled = true;
-  bool isScrolling = false;
-
-  bool onNotification(Notification notification) {
-    if (notification is ScrollUpdateNotification) {
-      onStartMoving();
-      return false;
+  MonthlyCalenderController newCalenderController(DateTime targetDate) {
+    int renderingDelay;
+    if (_isScrolling) {
+      renderingDelay = 0;
+    } else {
+      // inject fluctuation on first appearance of the screen to mitigate performance impact
+      renderingDelay = 30 * (10 * Random().nextDouble()).floor();
     }
+    return MonthlyCalenderController(this,
+        targetDate: targetDate,
+        renderingDelay: Duration(milliseconds: renderingDelay));
+  }
 
-    if (notification is ScrollEndNotification) {
-      Future(() async {
-        isScrolling = false;
-        await Future.delayed(MonthlyScreen.settleDelay);
-        if (isScrolling) {
-          // cancel to issue slowDown-event if it is not settled
-          return;
-        }
-        // settled - MonthlyScreen.settleDelay has passed after the last scroll event
-        isSettled = true;
-        onSettled();
-      });
-      return false;
-    } else if (notification is ScrollStartNotification) {
-      isScrolling = true;
-      isSettled = false;
-      return false;
-    }
+  // <observing scroll speed>
+  bool _isScrolling = false;
+  bool _greenLight = true; // to allow button making
+  bool get greenLight => _greenLight;
+  void init() {
+    _isScrolling = false;
+    _greenLight = false;
+    onSettled();
+  }
 
-    return false;
+  void onScrolling() {
+    _isScrolling = true;
+    _greenLight = false;
   }
 
   void onSettled() {
-    for (var key in _monthlycalendarKeys) {
-      if (key.currentState?.mounted ?? false) {
-        key.currentState?.startMakingButtons();
-      }
+    Future(() async {
+      // inject delay to avoid flickering
+      _isScrolling = false;
+      await Future.delayed(MonthlyScreen.settleDelay);
+      if (_isScrolling) return;
+      _greenLight = true;
+    });
+  }
+  // </observing scroll speed>
+}
+
+class MonthlyScreen extends StatelessWidget {
+  static const Duration settleDelay = Duration(milliseconds: 300);
+  final MonthlyScreenController ctl;
+
+  const MonthlyScreen({super.key, required this.ctl});
+
+  // to observe scroll speed
+  bool onNotification(Notification notification) {
+    switch (notification) {
+      case ScrollUpdateNotification _:
+      case ScrollStartNotification _:
+        ctl.onScrolling();
+        return false;
+      case ScrollEndNotification _:
+        ctl.onSettled();
+        return false;
+      default:
+        return false;
     }
   }
 
-  void onStartMoving() {
-    for (var key in _monthlycalendarKeys) {
-      if (key.currentState?.mounted ?? false) {
-        key.currentState?.stopMakingButtons();
-      }
-    }
-  }
-  // </scroll speed notifier>
-
-  MonthlyCalendar bindedMonthlyCalendar(DateTime forThisDate) {
-    var key = GlobalKey<_MonthlyCalendarState>();
-    var calendar = MonthlyCalendar(
-        forThisDate: forThisDate,
-        setShownDate: widget.setShownDate,
-        switchToDailyScreen: widget.switchToDailyScreen,
-        makeButtonsNow: isSettled,
-        key: key);
-    _monthlycalendarKeys.add(key);
+  MonthlyCalendar calender(DateTime forThisDate) {
+    // shownRangeController is called to observe the range of shown dates.
+    // This is necessary to update the range of caluculation of `Predictions`.
+    ctl.superCtl.predictionController.rendered(forThisDate);
+    var calendar = MonthlyCalendar(ctl: ctl.newCalenderController(forThisDate));
     return calendar;
   }
 
-  Scrollable calendarList(BuildContext context) {
+  Scrollable calendarList() {
     // dual-directional infinite vertically scrollable list
     Key center = UniqueKey(); // this key is to center the list
     SliverList forwardList = SliverList(
       delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
-        var date = DateTime(widget.initialShownDate.year,
-            widget.initialShownDate.month + index, 1);
-        return bindedMonthlyCalendar(date);
+        var date = DateTime(ctl.superCtl.focusedDate.year,
+            ctl.superCtl.focusedDate.month + index, 1);
+        return calender(date);
       }),
       key: center,
     );
 
     SliverList reverseList = SliverList(
       delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
-        var date = DateTime(widget.initialShownDate.year,
-            widget.initialShownDate.month - index - 1, 1);
-        return bindedMonthlyCalendar(date);
+        var date = DateTime(ctl.superCtl.focusedDate.year,
+            ctl.superCtl.focusedDate.month - index - 1, 1);
+        return calender(date);
       }),
     );
 
@@ -203,24 +235,12 @@ class _MonthlyScreenState extends State<MonthlyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    /*
-    not to interrupt page transition, wrap it with FutureBuilder
-    because rendering MonthlyCalendar widgets is time-consuming 
-    */
-    // TODO: make it more efficient
-    return FutureBuilder(
-        future: Future.delayed(MonthlyScreen.buildDelay),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          } else {
-            // notify based on scroll speed
-            return NotificationListener(
-              onNotification: onNotification,
-              child: calendarList(context),
-            );
-          }
-        });
+    ctl.init();
+    // notify based on scroll speed
+    return NotificationListener(
+      onNotification: onNotification,
+      child: calendarList(),
+    );
   }
 }
 
@@ -235,52 +255,17 @@ Monthlycalendar should also handle Future-Object to show a loading indicator.
 DateButtons are so many that it influences the performance; it supresses ButtonBuilding until it is needed.
 */
 
-class MonthlyCalendar extends StatefulWidget {
-  final DateTime forThisDate;
-  final void Function(DateTime) setShownDate;
-  final void Function() switchToDailyScreen;
-  final bool makeButtonsNow;
+class MonthlyCalenderController {
+  final MonthlyScreenController superCtl;
+  final DateTime targetDate;
+  final Duration renderingDelay;
+  MonthlyCalenderController(this.superCtl,
+      {required this.targetDate,
+      this.renderingDelay = const Duration(milliseconds: 0)});
 
-  const MonthlyCalendar(
-      {super.key,
-      required this.forThisDate,
-      required this.setShownDate,
-      required this.switchToDailyScreen,
-      required this.makeButtonsNow});
-
-  @override
-  State<MonthlyCalendar> createState() => _MonthlyCalendarState();
-}
-
-class _MonthlyCalendarState extends State<MonthlyCalendar> {
-  @override
-  void initState() {
-    super.initState();
-    shouldMakeButtons = widget.makeButtonsNow;
+  DateButtonController newButtonController(DateTime date) {
+    return DateButtonController(this, date: date);
   }
-
-  // <button making control> It is used to control the building of buttons.
-  late bool shouldMakeButtons;
-  bool buttonsAreDrawn = false;
-  void startMakingButtons() {
-    if (shouldMakeButtons || buttonsAreDrawn) {
-      return;
-    }
-    setState(() {
-      shouldMakeButtons = true;
-    });
-  }
-
-  void stopMakingButtons() {
-    // if buttons are already drawn, it does not cause building buttons again.
-    if (!shouldMakeButtons || buttonsAreDrawn) {
-      return;
-    }
-    setState(() {
-      shouldMakeButtons = false;
-    });
-  }
-  // </button making control>
 
   // <values> value caluculations
   int? _numberOfRows;
@@ -290,24 +275,15 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
     return _numberOfRows!;
   }
 
-  int get indexDateMapOffset {
-    return widget.forThisDate.weekday - 1;
-  }
+  int get indexDateMapOffset => targetDate.weekday - 1;
 
   int? _daysInMonth;
   int get daysInMonth {
-    _daysInMonth ??=
-        DateTime(widget.forThisDate.year, widget.forThisDate.month + 1, 0).day;
+    _daysInMonth ??= DateTime(targetDate.year, targetDate.month + 1, 0).day;
     return _daysInMonth!;
   }
 
-  double calendarWidthFor(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    const double maxWidth = 350;
-    return min(maxWidth, screenWidth);
-  }
-
-  int? calcDayFrom(int index) {
+  int? dateOn(int index) {
     if (index < indexDateMapOffset) {
       return null;
     }
@@ -316,29 +292,35 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
     }
     return index - indexDateMapOffset + 1;
   }
-
   // </values>
+}
 
-  // <makeDateButtons> Fetching data is needed to calclating styles for DateButtons; it is done in a separate thread.
+class MonthlyCalendar extends StatelessWidget {
+  final MonthlyCalenderController ctl;
+  static const Duration signCheckInterval = Duration(milliseconds: 600);
 
-  Future<List<DateButton>> makeDateButtons() async {
-    List<Future<DateButton>> futureBuffer = [];
-    for (int i = 0; i < daysInMonth; i++) {
-      futureBuffer.add(DateButton.make(
-          DateTime(widget.forThisDate.year, widget.forThisDate.month, i + 1),
-          widget.setShownDate,
-          widget.switchToDailyScreen));
-    }
-    return Future.wait(futureBuffer);
+  const MonthlyCalendar({super.key, required this.ctl});
+
+  double calendarWidth(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    const double maxWidth = 350;
+    return min(maxWidth, screenWidth);
   }
-  // </makeDateButtons>
 
-  // <Components> They are separated just to avoid deep nesting.
-  SizedBox labelBox(BuildContext context) {
+  Widget frame(BuildContext context, Widget child) {
+    return Container(
+      height: calendarWidth(context) * ctl.numberOfRows / 7,
+      width: calendarWidth(context),
+      color: Theme.of(context).colorScheme.surface,
+      child: child,
+    );
+  }
+
+  SizedBox label(BuildContext context) {
     return SizedBox(
-      width: calendarWidthFor(context),
+      width: calendarWidth(context),
       child: Text(
-        '${widget.forThisDate.year} - ${widget.forThisDate.month}',
+        '${ctl.targetDate.year} - ${ctl.targetDate.month}',
         style: TextStyle(
             color: Theme.of(context).colorScheme.primary,
             fontSize: 38), //Theme.of(context).textTheme.headlineLarge
@@ -346,74 +328,85 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
     );
   }
 
-  Container sizedContainer(BuildContext context, Widget child) {
-    return Container(
-      height: calendarWidthFor(context) * (numberOfRows / 7),
-      width: calendarWidthFor(context),
-      color: Theme.of(context).colorScheme.surface,
-      child: child,
-    );
+  Future<void> waitForGreenLight() async {
+    // to allow blocking, await for a while regardless of the state of greenLight
+    await Future.delayed(Duration(milliseconds: 100));
+    while (!ctl.superCtl.greenLight) {
+      await Future.delayed(signCheckInterval);
+    }
   }
 
-  Container loadingIndicator(BuildContext context) {
-    return sizedContainer(
-        context, const Center(child: CircularProgressIndicator()));
+  Future<List<DateButton>> arrayOfButtons(BuildContext context) async {
+    // inject rendering delay to vary the time of button making
+    await Future.delayed(ctl.renderingDelay);
+    // to mitigate performance impact, buttons are made in batches
+    const batchNum = 3; // number of batches
+    List<DateButton> ret = [];
+    int batchSize = (ctl.daysInMonth / batchNum).floor();
+
+    // make `batchSize` of buttons at once
+    for (int i = 0; i < batchNum - 1; i += 1) {
+      await waitForGreenLight(); // to avoid flickering
+      for (int j = i * batchSize; j < (i + 1) * batchSize; j += 1) {
+        ret.add(DateButton(
+            ctl: ctl.newButtonController(
+                DateTime(ctl.targetDate.year, ctl.targetDate.month, j + 1))));
+      }
+    }
+
+    // make the rest of buttons (this is separated to deal with rounding error)
+    await waitForGreenLight();
+    for (int j = (batchNum - 1) * batchSize; j < ctl.daysInMonth; j += 1) {
+      ret.add(DateButton(
+          ctl: ctl.newButtonController(
+              DateTime(ctl.targetDate.year, ctl.targetDate.month, j + 1))));
+    }
+
+    return ret;
   }
 
-  Container arrengedButtons(BuildContext context, List<DateButton> buttons) {
-    return sizedContainer(
-      context,
-      GridView.builder(
-        itemCount: numberOfRows * 7,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 7,
-          childAspectRatio: 1, // square cells
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-        ),
-        itemBuilder: (context, index) {
-          var day = calcDayFrom(index);
-          if (day == null) {
-            return const Text('');
-          } else {
-            return buttons[day - 1];
-          }
-        },
+  Future<Widget> buttonsInGrid(BuildContext context) async {
+    var array = await arrayOfButtons(context);
+    return GridView.builder(
+      itemCount: ctl.numberOfRows * 7,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 7,
+        childAspectRatio: 1, // square cells
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
       ),
+      itemBuilder: (context, index) {
+        var day = ctl.dateOn(index);
+        if (day == null) {
+          return const Text('');
+        } else {
+          return array[day - 1];
+        }
+      },
     );
   }
 
-  Container errorMessage(BuildContext context, {String? message}) {
-    return sizedContainer(context, Text('somethingWentWrong:: $message'));
+  Widget mainPart(BuildContext context) {
+    return FutureBuilder(
+        future: buttonsInGrid(context),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return frame(
+                context, const Center(child: CircularProgressIndicator()));
+          } else {
+            return frame(context, snapshot.data!);
+          }
+        });
   }
-  // </Components>
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         const Divider(),
-        labelBox(context),
-        shouldMakeButtons
-            ? FutureBuilder(
-                future: makeDateButtons(),
-                builder: (BuildContext context,
-                    AsyncSnapshot<List<DateButton>> snapshot) {
-                  Widget completed;
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return loadingIndicator(context);
-                  } else if (snapshot.hasData) {
-                    completed = arrengedButtons(context, snapshot.data!);
-                  } else {
-                    completed = errorMessage(context,
-                        message: snapshot.error?.toString());
-                  }
-                  buttonsAreDrawn = true;
-                  return completed;
-                },
-              )
-            : loadingIndicator(context),
+        label(context),
+        mainPart(context),
       ],
     );
   }
@@ -426,36 +419,32 @@ Its main function is to switch to DailyScreen when it is clicked.
 DataButtons vary in style based on data existance.
 So, it should handle Future-Object to consult a data provider.
 */
-class DateButton extends StatelessWidget {
+class DateButtonController {
   final DateTime date;
-  final void Function(DateTime) setShownDate;
-  final void Function() switchToDailyScreen;
-  final DateButtonStyle style;
+  final MonthlyCalenderController superCtl;
+  SchedulingPageController get page => superCtl.superCtl.superCtl;
 
-  static Future<DateButton> make(DateTime date,
-      void Function(DateTime) setShownDate, void Function() switchToDailyScreen,
-      {Key? key}) async {
-    return DateButton(
-        date: date,
-        setShownDate: setShownDate,
-        switchToDailyScreen: switchToDailyScreen,
-        style: await DateButtonHandler().fetchStyleFor(date));
+  DateButtonController(this.superCtl, {required this.date});
+  Future<DateButtonStyle> style() async {
+    return await DateButtonHandler().fetchStyleFor(date);
   }
 
-  const DateButton({
-    super.key,
-    required this.date,
-    required this.setShownDate,
-    required this.switchToDailyScreen,
-    required this.style,
-  });
+  void setFocusedDate() {
+    page.focusedDate = date;
+  }
+}
 
-  TextButton button(BuildContext context, Color backgroundColor,
+class DateButton extends StatelessWidget {
+  final DateButtonController ctl;
+
+  const DateButton({super.key, required this.ctl});
+
+  TextButton templ(BuildContext context, Color backgroundColor,
       Color borderColor, Color textColor) {
     return TextButton(
         onPressed: () {
-          setShownDate(date);
-          switchToDailyScreen();
+          ctl.setFocusedDate();
+          ctl.page.switchToDailyScreen();
         },
         style: TextButton.styleFrom(
             backgroundColor: backgroundColor,
@@ -464,30 +453,56 @@ class DateButton extends StatelessWidget {
               color: borderColor,
             )),
         child: Text(
-          '${date.day}',
+          '${ctl.date.day}',
           style: TextStyle(color: textColor),
         ));
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget buttonHasNothing(BuildContext context) {
+    return templ(context, Theme.of(context).colorScheme.surface,
+        Theme.of(context).disabledColor, Theme.of(context).disabledColor);
+  }
+
+  Widget buttonHasTrivialEvent(BuildContext context) {
+    return templ(
+        context,
+        Theme.of(context).colorScheme.surface,
+        Theme.of(context).colorScheme.primary,
+        Theme.of(context).colorScheme.primary);
+  }
+
+  Widget buttonHasNotableEvent(BuildContext context) {
+    return templ(
+        context,
+        Theme.of(context).colorScheme.primaryContainer,
+        Theme.of(context).colorScheme.primary,
+        Theme.of(context).colorScheme.primary);
+  }
+
+  Widget styledButton(BuildContext context, DateButtonStyle style) {
     switch (style) {
       case DateButtonStyle.hasNothing:
-        return button(context, Theme.of(context).colorScheme.surface,
-            Theme.of(context).disabledColor, Theme.of(context).disabledColor);
+        return buttonHasNothing(context);
       case DateButtonStyle.hasTrivialEvent:
-        return button(
-            context,
-            Theme.of(context).colorScheme.surface,
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.primary);
+        return buttonHasTrivialEvent(context);
       case DateButtonStyle.hasNotableEvent:
-        return button(
-            context,
-            Theme.of(context).colorScheme.primaryContainer,
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.primary);
+        return buttonHasNotableEvent(context);
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+        future: ctl.style(),
+        builder: (context, snapshot) {
+          DateButtonStyle style;
+          if (!snapshot.hasData) {
+            style = DateButtonStyle.hasNothing;
+          } else {
+            style = snapshot.data!;
+          }
+          return styledButton(context, style);
+        });
   }
 }
 
@@ -496,31 +511,35 @@ DailyScreen has an infinite horizontal list of TicketContainer widgets, containe
 DailyScreen implement list-function. It updates label content. It instanciate the button as a floating button.
 */
 
-class DailyScreen extends StatefulWidget {
-  final DateTime initialShownDate;
-  final void Function(DateTime) setShownDate;
-  final DateTime Function() getShownDate;
-  final void Function() switchToMonthlyScreen;
+class DailyScreenController {
+  final SchedulingPageController superCtl;
+  final ScrollController scroll = ScrollController();
+  late final TicketCreationButtonController button;
+  late final TicketContainerLabelController label;
+  DateTime pivotDate = today();
+  DailyScreenController(this.superCtl) {
+    label = TicketContainerLabelController(this);
+    button = TicketCreationButtonController(this);
+  }
 
-  const DailyScreen(
-      {super.key,
-      required this.initialShownDate,
-      required this.setShownDate,
-      required this.getShownDate,
-      required this.switchToMonthlyScreen});
+  TicketContainerController newTicketContainerController(DateTime date) {
+    return TicketContainerController(this, date: date);
+  }
 
-  @override
-  State<DailyScreen> createState() => _DailyScreenState();
+  void updateLabel() {
+    label.updateLabel();
+  }
 }
 
-class _DailyScreenState extends State<DailyScreen> {
-  // to update label content along with changing of shown date
-  final GlobalKey<_TicketContainerLabelState> _labelKey =
-      GlobalKey<_TicketContainerLabelState>();
+class DailyScreen extends StatelessWidget {
+  final DailyScreenController ctl;
+  const DailyScreen({super.key, required this.ctl});
 
-  // Following methods are separated just to avoid deep nesting.
-  TicketContainer bindedTicketContainer(DateTime forThisDate) {
-    return TicketContainer(forThisDate: forThisDate);
+  TicketContainer ticketContainer(DateTime forThisDate) {
+    ctl.superCtl.predictionController.rendered(forThisDate);
+    return TicketContainer(
+      ctl: ctl.newTicketContainerController(forThisDate),
+    );
   }
 
   int calcPageIdx(double pixels, BuildContext context) {
@@ -528,46 +547,42 @@ class _DailyScreenState extends State<DailyScreen> {
     return (pageIdx).round();
   }
 
-  void updateShownDateFrom(BuildContext context, ViewportOffset offset) {
+  void updateFocusedDateFrom(BuildContext context, ViewportOffset offset) {
     if (offset.hasPixels) {
-      widget.setShownDate(DateTime(
-          widget.initialShownDate.year,
-          widget.initialShownDate.month,
-          widget.initialShownDate.day + calcPageIdx(offset.pixels, context)));
-      _labelKey.currentState?.update(widget.getShownDate());
+      ctl.superCtl.focusedDate = DateTime(
+          ctl.pivotDate.year,
+          ctl.pivotDate.month,
+          ctl.pivotDate.day + calcPageIdx(offset.pixels, context));
     }
   }
 
-  Widget ticketContainerList(
-      BuildContext context, ScrollController scrollController) {
+  Widget ticketContainerList(BuildContext context) {
     // dual-directional infinite horizontally scrollable snapping list
     Key center = UniqueKey(); // this key is to center the list
     SliverList forwardList = SliverList(
       delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
-        var date = DateTime(widget.initialShownDate.year,
-            widget.initialShownDate.month, widget.initialShownDate.day + index);
-        return bindedTicketContainer(date);
+        var date = DateTime(
+            ctl.pivotDate.year, ctl.pivotDate.month, ctl.pivotDate.day + index);
+        return ticketContainer(date);
       }),
       key: center,
     );
 
     SliverList reverseList = SliverList(
       delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
-        var date = DateTime(
-            widget.initialShownDate.year,
-            widget.initialShownDate.month,
-            widget.initialShownDate.day - index - 1);
-        return bindedTicketContainer(date);
+        var date = DateTime(ctl.pivotDate.year, ctl.pivotDate.month,
+            ctl.pivotDate.day - index - 1);
+        return ticketContainer(date);
       }),
     );
     return Scrollable(
       axisDirection: AxisDirection.right,
-      controller: scrollController,
+      controller: ctl.scroll,
       physics:
           MyPageScrollPhysics(pageWidthInPixel: TicketContainer.width(context)),
       viewportBuilder: (context, offset) {
         offset.addListener(() {
-          updateShownDateFrom(context, offset);
+          updateFocusedDateFrom(context, offset);
         });
         return Viewport(
           anchor: (1 - TicketContainer.widthFraction(context)) / 2,
@@ -585,27 +600,28 @@ class _DailyScreenState extends State<DailyScreen> {
 
   // Handles mouse wheel event to scroll the list
   Widget mouseWheelAcceptedTicketContainerList(BuildContext context) {
-    ScrollController scrollController = ScrollController();
+    const animationDuration = Duration(milliseconds: 300);
 
     return Listener(
         onPointerSignal: (event) {
           if (event is PointerScrollEvent) {
-            scrollController.animateTo(
-                scrollController.offset +
+            ctl.scroll.animateTo(
+                ctl.scroll.offset +
                     (event.scrollDelta.dy < 0 ? 1 : -1) *
                         TicketContainer.width(context),
-                duration: const Duration(milliseconds: 300),
+                duration: animationDuration,
                 curve: Curves.easeInOut);
           }
         },
-        child: ticketContainerList(context, scrollController));
+        child: ticketContainerList(context));
   }
 
   Widget label() {
-    return TicketContainerLabel(
-        key: _labelKey,
-        initDate: widget.getShownDate(),
-        toSwitchMonthlyScreen: widget.switchToMonthlyScreen);
+    return TextButton(
+        onPressed: () {
+          ctl.superCtl.switchToMonthlyScreen();
+        },
+        child: TicketContainerLabel(ctl: ctl.label));
   }
 
   @override
@@ -619,7 +635,7 @@ class _DailyScreenState extends State<DailyScreen> {
         ],
       ),
       floatingActionButton: TicketCreationButton(
-        getShownDate: widget.getShownDate,
+        ctl: ctl.button,
       ),
     );
   }
@@ -634,29 +650,39 @@ So, it should be updated when the shown date is changed. This changing feature i
 Additionally, the label performs as a button which navigates to MonthlyScreen.
 */
 
+class TicketContainerLabelController {
+  final DailyScreenController superCtl;
+  SchedulingPageController get pageCtl => superCtl.superCtl;
+  TicketContainerLabelController(this.superCtl);
+
+  void Function()? onLabelUpdateRequired;
+  void updateLabel() {
+    if (onLabelUpdateRequired != null) {
+      onLabelUpdateRequired!();
+    }
+  }
+}
+
 class TicketContainerLabel extends StatefulWidget {
-  final DateTime initDate;
-  final void Function() toSwitchMonthlyScreen;
-  const TicketContainerLabel(
-      {super.key, required this.initDate, required this.toSwitchMonthlyScreen});
+  final TicketContainerLabelController ctl;
+  const TicketContainerLabel({super.key, required this.ctl});
 
   @override
   State<TicketContainerLabel> createState() => _TicketContainerLabelState();
 }
 
 class _TicketContainerLabelState extends State<TicketContainerLabel> {
-  late DateTime date;
-
-  void update(DateTime date) {
-    setState(() {
-      this.date = date;
-    });
-  }
-
   @override
   void initState() {
     super.initState();
-    date = widget.initDate;
+    widget.ctl.onLabelUpdateRequired = () {
+      if (!mounted) return;
+      // if it is not mounted, there is no need to update the label.
+      // because it should be rebuild when it is remounted.
+      setState(() {
+        // listen to widget.pageController.focusedDate
+      });
+    };
   }
 
   String dayToString(int day) {
@@ -709,23 +735,19 @@ class _TicketContainerLabelState extends State<TicketContainerLabel> {
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(
-        onPressed: () {
-          widget.toSwitchMonthlyScreen();
-        },
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '${date.year}',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            Text(' ${dayToString(date.day)} ',
-                style: Theme.of(context).textTheme.headlineLarge),
-            Text(monthToString(date.month),
-                style: Theme.of(context).textTheme.headlineSmall),
-          ],
-        ));
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          '${widget.ctl.pageCtl.focusedDate.year}',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        Text(' ${dayToString(widget.ctl.pageCtl.focusedDate.day)} ',
+            style: Theme.of(context).textTheme.headlineLarge),
+        Text(monthToString(widget.ctl.pageCtl.focusedDate.month),
+            style: Theme.of(context).textTheme.headlineSmall),
+      ],
+    );
   }
 }
 
@@ -734,13 +756,36 @@ TicketContainer is a container of Tickets. Tickets will be listed vertically in 
 TicketContainer implements Ticket listing feature.
 On daily screen, TicketContainers are listed horizontally.
 */
+
+class TicketContainerController {
+  DateTime date;
+  final DailyScreenController superCtl;
+  TicketContainerController(this.superCtl, {required this.date});
+
+  Future<List<data.Log>> logTickets() {
+    return LogHandler().belongsTo(date);
+  }
+
+  Future<List<data.DisplayTicket>> displayTickets() {
+    return DisplayHandler().belongsTo(date);
+  }
+
+  Future<List<data.Schedule>> scheduleTickets() {
+    return ScheduleHandler().belongsTo(date);
+  }
+
+  Future<List<data.Estimation>> estimationTickets() {
+    return EstimationHandler().belongsTo(date);
+  }
+}
+
 class TicketContainer extends StatelessWidget {
   static const double widthMaximumFraction = 0.9;
   static const double maxWidthInPixel = 400;
   static const double paddingWidthInPixel = 5;
-  final DateTime forThisDate;
+  final TicketContainerController ctl;
 
-  const TicketContainer({super.key, required this.forThisDate});
+  const TicketContainer({super.key, required this.ctl});
 
   static double width(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
@@ -753,8 +798,8 @@ class TicketContainer extends StatelessWidget {
 
   // Following methods are separated just to avoid deep nesting.
 
-  Widget box(BuildContext context, Widget child) {
-    var boxBorderSide =
+  Widget frame(BuildContext context, Widget child) {
+    var frameBorderSide =
         BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.0);
     return SizedBox(
       width: TicketContainer.width(context),
@@ -766,9 +811,9 @@ class TicketContainer extends StatelessWidget {
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             border: Border(
-              top: boxBorderSide,
-              left: boxBorderSide,
-              right: boxBorderSide,
+              top: frameBorderSide,
+              left: frameBorderSide,
+              right: frameBorderSide,
             ),
           ),
           child: child,
@@ -781,9 +826,10 @@ class TicketContainer extends StatelessWidget {
     await Future.delayed(
         const Duration(milliseconds: 600)); // allow other tasks to run
     List<Future<List<Widget>>> futureBuffer = [];
+    // displayTickets
     futureBuffer.add((() async {
       return [
-        for (var displayTicket in await DisplayHandler().belongsTo(forThisDate))
+        for (var displayTicket in await ctl.displayTickets())
           DisplayTicket(
               onPressed: () {
                 var controller =
@@ -797,10 +843,10 @@ class TicketContainer extends StatelessWidget {
               data: displayTicket)
       ];
     })());
+    // scheduleTickets
     futureBuffer.add((() async {
       return [
-        for (var scheduleTicket
-            in await ScheduleHandler().belongsTo(forThisDate))
+        for (var scheduleTicket in await ctl.scheduleTickets())
           ScheduleTicket(
               onPressed: () {
                 var controller = ScheduleTicketConfigSectionController(
@@ -814,10 +860,10 @@ class TicketContainer extends StatelessWidget {
               data: scheduleTicket)
       ];
     })());
+    // estimationTickets
     futureBuffer.add((() async {
       return [
-        for (var estimationTicket
-            in await EstimationHandler().belongsTo(forThisDate))
+        for (var estimationTicket in await ctl.estimationTickets())
           EstimationTicket(
               onPressed: () {
                 var controller = EstimationTicketConfigSectionController(
@@ -831,9 +877,10 @@ class TicketContainer extends StatelessWidget {
               data: estimationTicket)
       ];
     })());
+    // logTickets
     futureBuffer.add((() async {
       return [
-        for (var logTicket in await LogHandler().belongsTo(forThisDate))
+        for (var logTicket in await ctl.logTickets())
           LogTicket(
               onPressed: () {
                 var controller =
@@ -861,10 +908,10 @@ class TicketContainer extends StatelessWidget {
         future: listOfTickets(context),
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return box(
+            return frame(
                 context, const Center(child: CircularProgressIndicator()));
           } else {
-            return box(context, snapshot.data!);
+            return frame(context, snapshot.data!);
           }
         });
   }
@@ -875,15 +922,22 @@ TicketCreationButton is a button to create a new ticket.
 When it is pressed, it opens the bottom modal sheet which contains configuration sections.
 It appears as a floating button on the daily screen.
 */
+class TicketCreationButtonController {
+  final DailyScreenController superCtl;
+  SchedulingPageController get pageCtl => superCtl.superCtl;
+  TicketCreationButtonController(this.superCtl);
+}
+
 class TicketCreationButton extends StatelessWidget {
-  final DateTime Function() getShownDate;
-  const TicketCreationButton({super.key, required this.getShownDate});
+  final TicketCreationButtonController ctl;
+  const TicketCreationButton({super.key, required this.ctl});
 
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton(
       onPressed: () {
-        var controller = TicketCreationSectionController(date: getShownDate());
+        var controller =
+            TicketCreationSectionController(date: ctl.pageCtl.focusedDate);
         var configSection =
             TicketCreationSection(sectionController: controller);
         showDataEditWindow(context, configSection, controller);
