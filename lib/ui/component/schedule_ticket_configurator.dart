@@ -196,9 +196,9 @@ It has a lot of options and it change actions based on the selected options.
 This is because necessary information is different between each repeat type.
 */
 class ScheduleTicketRepeatSettingSectorController {
-  SCRepeatType _repeatType;
-  SCRepeatType get repeatType => _repeatType;
-  set repeatType(SCRepeatType value) {
+  ScheduleRepeatType _repeatType;
+  ScheduleRepeatType get repeatType => _repeatType;
+  set repeatType(ScheduleRepeatType value) {
     _repeatType = value;
     _onChanged();
   }
@@ -275,7 +275,7 @@ class ScheduleTicketRepeatSettingSectorController {
   }
 
   ScheduleTicketRepeatSettingSectorController({
-    SCRepeatType initialRepeatType = SCRepeatType.no,
+    ScheduleRepeatType initialRepeatType = ScheduleRepeatType.no,
     Duration initialRepeatInterval = const Duration(days: 1),
     List<Weekday> initialRepeatDayOfWeek = const [],
     MonthlyRepeatType initialMonthlyRepeatType = MonthlyRepeatType.fromHead,
@@ -325,15 +325,15 @@ class _ScheduleTicketRepeatSettingSectorState
   // <components> just to avoid deep nesting
 
   Widget repeatTypeSelector() {
-    return DropdownMenu<SCRepeatType>(
+    return DropdownMenu<ScheduleRepeatType>(
       initialSelection: widget.controller.repeatType,
       dropdownMenuEntries: const [
-        DropdownMenuEntry(value: SCRepeatType.no, label: 'no repeat'),
+        DropdownMenuEntry(value: ScheduleRepeatType.no, label: 'no repeat'),
         DropdownMenuEntry(
-            value: SCRepeatType.interval, label: 'repeat in days'),
-        DropdownMenuEntry(value: SCRepeatType.weekly, label: 'weekly'),
-        DropdownMenuEntry(value: SCRepeatType.monthly, label: 'monthly'),
-        DropdownMenuEntry(value: SCRepeatType.anually, label: 'anually'),
+            value: ScheduleRepeatType.interval, label: 'repeat in days'),
+        DropdownMenuEntry(value: ScheduleRepeatType.weekly, label: 'weekly'),
+        DropdownMenuEntry(value: ScheduleRepeatType.monthly, label: 'monthly'),
+        DropdownMenuEntry(value: ScheduleRepeatType.anually, label: 'anually'),
       ],
       onSelected: (value) {
         if (value != null) {
@@ -466,18 +466,18 @@ class _ScheduleTicketRepeatSettingSectorState
           children: [
             repeatTypeSelector(),
             switch (widget.controller.repeatType) {
-              SCRepeatType.no => const SizedBox(),
-              SCRepeatType.interval => repeatIntervalSelector(),
-              SCRepeatType.weekly => weekDaySelector(),
-              SCRepeatType.monthly => monthlyRepeatTypeSelector(),
-              SCRepeatType.anually => const SizedBox(),
+              ScheduleRepeatType.no => const SizedBox(),
+              ScheduleRepeatType.interval => repeatIntervalSelector(),
+              ScheduleRepeatType.weekly => weekDaySelector(),
+              ScheduleRepeatType.monthly => monthlyRepeatTypeSelector(),
+              ScheduleRepeatType.anually => const SizedBox(),
             },
             switch (widget.controller.repeatType) {
-              SCRepeatType.no => const SizedBox(),
-              SCRepeatType.interval => periodSelector(),
-              SCRepeatType.weekly => periodSelector(),
-              SCRepeatType.monthly => periodSelector(),
-              SCRepeatType.anually => periodSelector(),
+              ScheduleRepeatType.no => const SizedBox(),
+              ScheduleRepeatType.interval => periodSelector(),
+              ScheduleRepeatType.weekly => periodSelector(),
+              ScheduleRepeatType.monthly => periodSelector(),
+              ScheduleRepeatType.anually => periodSelector(),
             },
           ],
         ));

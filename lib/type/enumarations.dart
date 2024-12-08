@@ -1,4 +1,4 @@
-enum DTContentType {
+enum DisplayContentType {
   dailyAverage,
   dailyQuartileAverage,
   monthlyAverage,
@@ -6,28 +6,28 @@ enum DTContentType {
   summation
 }
 
-enum DTTermMode {
+enum DisplayTermMode {
   untilToday,
   lastPeriod,
   specificPeriod,
   untilDate;
 }
 
-enum DTPeriod {
+enum DisplayPeriod {
   week,
   month,
   halfYear,
   year;
 }
 
-enum ETContentType {
+enum EstimationContentType {
   perDay,
   perWeek,
   perMonth,
   perYear,
 }
 
-enum SCRepeatType { no, interval, weekly, monthly, anually }
+enum ScheduleRepeatType { no, interval, weekly, monthly, anually }
 
 enum MonthlyRepeatType { fromHead, fromTail }
 

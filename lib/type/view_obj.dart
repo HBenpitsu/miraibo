@@ -15,12 +15,12 @@ class Category {
 
 class DisplayTicket {
   int? id;
-  DTTermMode termMode;
-  DTPeriod displayPeriod;
+  DisplayTermMode termMode;
+  DisplayPeriod displayPeriod;
   DateTime? periodBegin;
   DateTime? periodEnd;
   DateTime? designatedDate;
-  DTContentType contentType;
+  DisplayContentType contentType;
   bool targetingAllCategories;
   List<Category> targetCategories;
 
@@ -41,7 +41,7 @@ class Estimation {
   int? id;
   DateTime? periodBeign;
   DateTime? periodEnd;
-  ETContentType contentType;
+  EstimationContentType contentType;
   bool targetingAllCategories;
   List<Category> targetCategories;
 
@@ -61,7 +61,7 @@ class Schedule {
   Category category;
   int amount;
   DateTime originDate;
-  SCRepeatType repeatType;
+  ScheduleRepeatType repeatType;
   Duration repeatInterval;
   List<Weekday> weeklyRepeatOn;
   Duration? monthlyHeadOriginRepeatOffset;

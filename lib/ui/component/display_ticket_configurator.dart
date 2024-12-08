@@ -65,9 +65,9 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
   late MultipleCategorySelectorController categorySelectorCtl;
   late FinitePeriodSelectorController periodPickerCtl;
   late DatePickButtonController datePickerCtl;
-  late DTContentType contentType;
-  late DTTermMode termMode;
-  late DTPeriod period;
+  late DisplayContentType contentType;
+  late DisplayTermMode termMode;
+  late DisplayPeriod period;
 
   @override
   void initSubModuleControllers() {
@@ -123,13 +123,14 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
     return sector(
         'Period',
         // there is no controller which returns the value of the selected item as 'DisplayTicketPeriod'
-        DropdownMenu<DTPeriod>(
+        DropdownMenu<DisplayPeriod>(
           initialSelection: period,
           dropdownMenuEntries: const [
-            DropdownMenuEntry(value: DTPeriod.week, label: 'week'),
-            DropdownMenuEntry(value: DTPeriod.month, label: 'month'),
-            DropdownMenuEntry(value: DTPeriod.halfYear, label: 'half year'),
-            DropdownMenuEntry(value: DTPeriod.year, label: 'year'),
+            DropdownMenuEntry(value: DisplayPeriod.week, label: 'week'),
+            DropdownMenuEntry(value: DisplayPeriod.month, label: 'month'),
+            DropdownMenuEntry(
+                value: DisplayPeriod.halfYear, label: 'half year'),
+            DropdownMenuEntry(value: DisplayPeriod.year, label: 'year'),
           ],
           onSelected: (value) {
             if (value != null) {
@@ -150,36 +151,37 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
   List<Widget> contentTypeSelector({bool fixed = false}) {
     if (fixed) {
       // for fixed situation, only summation is available
-      contentType = DTContentType.summation;
+      contentType = DisplayContentType.summation;
       return sector(
           'Content Type',
-          DropdownMenu<DTContentType>(
+          DropdownMenu<DisplayContentType>(
             initialSelection: contentType,
             dropdownMenuEntries: const [
               DropdownMenuEntry(
-                  value: DTContentType.summation, label: 'summation'),
+                  value: DisplayContentType.summation, label: 'summation'),
             ],
           ));
     } else {
       return sector(
           'Content Type',
           // there is no controller which returns the value of the selected item as 'DisplayTicketContentTypes'
-          DropdownMenu<DTContentType>(
+          DropdownMenu<DisplayContentType>(
             initialSelection: contentType,
             dropdownMenuEntries: const [
               DropdownMenuEntry(
-                  value: DTContentType.dailyAverage, label: 'daily average'),
+                  value: DisplayContentType.dailyAverage,
+                  label: 'daily average'),
               DropdownMenuEntry(
-                  value: DTContentType.dailyQuartileAverage,
+                  value: DisplayContentType.dailyQuartileAverage,
                   label: 'daily quartile average'),
               DropdownMenuEntry(
-                  value: DTContentType.monthlyAverage,
+                  value: DisplayContentType.monthlyAverage,
                   label: 'monthly average'),
               DropdownMenuEntry(
-                  value: DTContentType.monthlyQuartileAverage,
+                  value: DisplayContentType.monthlyQuartileAverage,
                   label: 'monthly quartile average'),
               DropdownMenuEntry(
-                  value: DTContentType.summation, label: 'summation'),
+                  value: DisplayContentType.summation, label: 'summation'),
             ],
             onSelected: (value) {
               if (value != null) {
@@ -194,17 +196,19 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
     return sector(
         'Term-mode',
         // there is no controller which returns the value of the selected item as 'DisplayTicketTermMode'
-        DropdownMenu<DTTermMode>(
+        DropdownMenu<DisplayTermMode>(
           initialSelection: termMode,
           dropdownMenuEntries: const [
             DropdownMenuEntry(
-                value: DTTermMode.untilToday, label: 'until today'),
+                value: DisplayTermMode.untilToday, label: 'until today'),
             DropdownMenuEntry(
-                value: DTTermMode.untilDate, label: 'until designated date'),
+                value: DisplayTermMode.untilDate,
+                label: 'until designated date'),
             DropdownMenuEntry(
-                value: DTTermMode.lastPeriod, label: 'last designated period'),
+                value: DisplayTermMode.lastPeriod,
+                label: 'last designated period'),
             DropdownMenuEntry(
-                value: DTTermMode.specificPeriod,
+                value: DisplayTermMode.specificPeriod,
                 label: 'designated specific period'),
           ],
           onSelected: (value) {
@@ -235,16 +239,16 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
       ...termModeSelector(),
       // Term mode dependencies
       ...switch (termMode) {
-        DTTermMode.untilDate => [
+        DisplayTermMode.untilDate => [
             ...dateSelectionCalenderForm(),
             ...contentTypeSelector(fixed: true),
           ],
-        DTTermMode.lastPeriod => [
+        DisplayTermMode.lastPeriod => [
             ...lastPeriodSelector(),
             ...contentTypeSelector(),
           ],
-        DTTermMode.untilToday => [...contentTypeSelector()],
-        DTTermMode.specificPeriod => [
+        DisplayTermMode.untilToday => [...contentTypeSelector()],
+        DisplayTermMode.specificPeriod => [
             ...specificPeriodSelector(),
             ...contentTypeSelector(),
           ],

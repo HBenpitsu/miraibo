@@ -11,17 +11,14 @@
             "id": "a7889308353032da",
             "type": "leaf",
             "state": {
-              "type": "canvas",
+              "type": "markdown",
               "state": {
-                "file": "doc/Untitled.canvas",
-                "viewState": {
-                  "x": 0,
-                  "y": 0,
-                  "zoom": 0
-                }
+                "file": "doc/model-structure.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-layout-dashboard",
-              "title": "Untitled"
+              "icon": "lucide-file",
+              "title": "model-structure"
             }
           },
           {
@@ -30,16 +27,15 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "README.md",
+                "file": "doc/component-structure.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "README"
+              "title": "component-structure"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -70,7 +66,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "component",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -177,17 +173,40 @@
       "canvas:Create new canvas": false,
       "daily-notes:Open today's daily note": false,
       "templates:Insert template": false,
-      "command-palette:Open command palette": false
+      "command-palette:Open command palette": false,
+      "callout-manager:Insert Callout": false
     }
   },
-  "active": "31a4ca0f2589e21b",
+  "active": "a7889308353032da",
   "lastOpenFiles": [
-    "Untitled.md",
-    "README.md",
-    "doc/Untitled.canvas",
-    "2024-12-04.md",
+    "doc/data.jpg",
+    "lib/modelV2/data/basic_accessors.g.dart",
+    "lib/modelV2/data/basic_accessors.dart",
+    "lib/modelV2/data/basic_dao.g.dart",
+    "lib/modelV2/data/basic_dao.dart",
+    "lib/modelV2/data/basicDao.g.dart",
+    "lib/modelV2/data/basicDao.dart",
+    "lib/modelV2/data/tables.dart",
+    "lib/modelV2/data/database.g.dart",
+    "lib/modelV2/data/database.dart",
+    "lib/modelV2/data/dao.g.dart",
+    "doc/model.jpg",
+    "doc/tickets-sample.png",
+    "doc/model-structure.md",
+    "doc/project-design.md",
+    "doc/database-structure.md",
     "doc/component-structure.md",
+    "doc/view.jpg",
+    "doc/miraibo.md",
+    "doc/directory-policy.md",
     "doc/coding-rules.md",
-    "doc/about-samples.md"
+    "doc/about-samples.md",
+    "doc/calender-sample.png",
+    "doc/class-design-visualize.canvas",
+    "doc/jackFes2024-えんぴつ(9).jpg",
+    "doc/jackFes2024-えんぴつ(10).jpg",
+    "doc/jackFes2024-えんぴつ(11).jpg",
+    "README.md",
+    "2024-12-04.md"
   ]
 }

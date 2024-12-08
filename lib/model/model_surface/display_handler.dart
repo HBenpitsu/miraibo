@@ -11,10 +11,10 @@ class DisplayHandler {
               startDate: dt.periodBegin,
               endDate: dt.periodEnd,
               periodInDays: switch (dt.displayPeriod) {
-                DTPeriod.week => Duration(days: 7),
-                DTPeriod.month => Duration(days: 30),
-                DTPeriod.halfYear => Duration(days: 180),
-                DTPeriod.year => Duration(days: 365),
+                DisplayPeriod.week => Duration(days: 7),
+                DisplayPeriod.month => Duration(days: 30),
+                DisplayPeriod.halfYear => Duration(days: 180),
+                DisplayPeriod.year => Duration(days: 365),
               },
             ),
             dt.targetingAllCategories
@@ -33,17 +33,17 @@ class DisplayHandler {
     return CalculateDisplayTicketContent(model_obj.DisplayTicket(
       contentType: dt.contentType,
       startDate:
-          dt.termMode == DTTermMode.specificPeriod ? dt.periodBegin : null,
-      endDate: dt.termMode == DTTermMode.specificPeriod ||
-              dt.termMode == DTTermMode.untilDate
+          dt.termMode == DisplayTermMode.specificPeriod ? dt.periodBegin : null,
+      endDate: dt.termMode == DisplayTermMode.specificPeriod ||
+              dt.termMode == DisplayTermMode.untilDate
           ? dt.periodEnd
           : null,
-      periodInDays: dt.termMode == DTTermMode.lastPeriod
+      periodInDays: dt.termMode == DisplayTermMode.lastPeriod
           ? switch (dt.displayPeriod) {
-              DTPeriod.week => Duration(days: 7),
-              DTPeriod.month => Duration(days: 30),
-              DTPeriod.halfYear => Duration(days: 180),
-              DTPeriod.year => Duration(days: 365),
+              DisplayPeriod.week => Duration(days: 7),
+              DisplayPeriod.month => Duration(days: 30),
+              DisplayPeriod.halfYear => Duration(days: 180),
+              DisplayPeriod.year => Duration(days: 365),
             }
           : null,
     )).execute();
@@ -58,21 +58,21 @@ class DisplayHandler {
         for (var cat in cats) view_obj.Category(id: cat.id, name: cat.name)
       ];
       var displayPeriod = dt.periodInDays == null
-          ? DTPeriod.week
+          ? DisplayPeriod.week
           : switch (dt.periodInDays!) {
-              Duration(inDays: 7) => DTPeriod.week,
-              Duration(inDays: 30) => DTPeriod.month,
-              Duration(inDays: 180) => DTPeriod.halfYear,
-              Duration(inDays: 365) => DTPeriod.year,
-              _ => DTPeriod.week,
+              Duration(inDays: 7) => DisplayPeriod.week,
+              Duration(inDays: 30) => DisplayPeriod.month,
+              Duration(inDays: 180) => DisplayPeriod.halfYear,
+              Duration(inDays: 365) => DisplayPeriod.year,
+              _ => DisplayPeriod.week,
             };
       var termMode = dt.periodInDays != null
-          ? DTTermMode.lastPeriod
+          ? DisplayTermMode.lastPeriod
           : dt.startDate != null && dt.endDate != null
-              ? DTTermMode.specificPeriod
+              ? DisplayTermMode.specificPeriod
               : dt.endDate != null
-                  ? DTTermMode.untilDate
-                  : DTTermMode.untilToday;
+                  ? DisplayTermMode.untilDate
+                  : DisplayTermMode.untilToday;
       ret.add(view_obj.DisplayTicket(
         id: dt.id,
         contentType: dt.contentType,

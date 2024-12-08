@@ -104,7 +104,7 @@ class ScheduleTicket extends StatelessWidget {
 
   String dateLabel() {
     String label = '';
-    if (data.repeatType != SCRepeatType.no) {
+    if (data.repeatType != ScheduleRepeatType.no) {
       label += 'repeated ';
       if (data.periodBegin != null) {
         label +=
@@ -173,26 +173,26 @@ class DisplayTicket extends StatelessWidget {
 
   String contentTypeLabel() {
     return switch (data.contentType) {
-      DTContentType.dailyAverage => 'daily average ',
-      DTContentType.dailyQuartileAverage => 'daily quartile average ',
-      DTContentType.monthlyAverage => 'monthly average: ',
-      DTContentType.monthlyQuartileAverage => 'monthly quartile average ',
-      DTContentType.summation => 'summation ',
+      DisplayContentType.dailyAverage => 'daily average ',
+      DisplayContentType.dailyQuartileAverage => 'daily quartile average ',
+      DisplayContentType.monthlyAverage => 'monthly average: ',
+      DisplayContentType.monthlyQuartileAverage => 'monthly quartile average ',
+      DisplayContentType.summation => 'summation ',
     };
   }
 
   String dateLabel() {
     return switch (data.termMode) {
-      DTTermMode.untilToday => 'until today',
-      DTTermMode.lastPeriod => switch (data.displayPeriod) {
-          DTPeriod.week => 'for last week',
-          DTPeriod.month => 'for last month',
-          DTPeriod.halfYear => 'for last half year',
-          DTPeriod.year => 'for last year',
+      DisplayTermMode.untilToday => 'until today',
+      DisplayTermMode.lastPeriod => switch (data.displayPeriod) {
+          DisplayPeriod.week => 'for last week',
+          DisplayPeriod.month => 'for last month',
+          DisplayPeriod.halfYear => 'for last half year',
+          DisplayPeriod.year => 'for last year',
         },
-      DTTermMode.untilDate =>
+      DisplayTermMode.untilDate =>
         'until ${data.designatedDate?.year}-${data.designatedDate?.month}-${data.designatedDate?.day}',
-      DTTermMode.specificPeriod =>
+      DisplayTermMode.specificPeriod =>
         'from ${data.periodBegin?.year}-${data.periodBegin?.month}-${data.periodBegin?.day} '
             'until ${data.periodEnd?.year}-${data.periodEnd?.month}-${data.periodEnd?.day}',
     };
@@ -241,10 +241,10 @@ class EstimationTicket extends StatelessWidget {
 
   String contentTypeLabel() {
     return switch (data.contentType) {
-      ETContentType.perDay => 'per day ',
-      ETContentType.perWeek => 'per week ',
-      ETContentType.perMonth => 'per month ',
-      ETContentType.perYear => 'per year ',
+      EstimationContentType.perDay => 'per day ',
+      EstimationContentType.perWeek => 'per week ',
+      EstimationContentType.perMonth => 'per month ',
+      EstimationContentType.perYear => 'per year ',
     };
   }
 

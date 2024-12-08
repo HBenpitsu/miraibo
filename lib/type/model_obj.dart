@@ -31,7 +31,7 @@ class DisplayTicket extends Record {
   Duration? periodInDays;
   DateTime? startDate;
   DateTime? endDate;
-  DTContentType contentType;
+  DisplayContentType contentType;
 
   DisplayTicket({
     this.id,
@@ -76,7 +76,7 @@ class Schedule extends Record {
   String supplement;
   DateTime originDate;
   int amount;
-  SCRepeatType repeatType;
+  ScheduleRepeatType repeatType;
   Duration repeatInterval;
   bool repeatOnSunday;
   bool repeatOnMonday;
@@ -186,7 +186,7 @@ class Estimation extends Record {
   int? id;
   DateTime? periodBegin;
   DateTime? periodEnd;
-  ETContentType contentType;
+  EstimationContentType contentType;
 
   Estimation({
     this.id,

@@ -1,5 +1,6 @@
 
-(confirmed on 30th Nov 2024)
+> [!warning] Uncorrespondance
+> code should be modified (Dec 8th 2024)
 
 - App Root
   - Tab View
@@ -100,9 +101,9 @@
                     - Supplementary information Inline textform
                     - Registoration date calendar form
                     - Amount Money form'
-                    - Camera Button (*)
+                    - Camera Button (\*)
                     - Presets selector Row-List
-    - Ticket Page
+    - ? `Ticket Page` renamed to `Main Page`
       - Ticket Container
         - Display Ticket...
           - -pressed->
@@ -158,6 +159,8 @@
                   - confirm
                   - cancel
         - Category create Button
+	  - Tentative Display Ticket Section
+	  - Tentative Estimation Ticket Section
       - Chart Section
         - Target category selector Pull down
         - Chart kind selection Pull down

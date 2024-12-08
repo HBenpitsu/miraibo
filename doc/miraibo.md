@@ -1,6 +1,6 @@
 
-(confirmed on 3rd Nov 2024)
-
+> [!check] confiemd
+> Dec 8th 2024
 # Miraibo
 
 An application to help users manage their finances, focusing on balancing payments. This app provides features to estimate and visualize the user's financial situation **in the future**. It is particularly useful for young people, such as students.
@@ -35,13 +35,15 @@ Note that this document does not contain detail for implementation, and does not
 Miraibo contains three main pages:
 
 - `Scheduling Page`
-- `Ticket Page`
+- `Main Page`
 - `Data Page`
 - `Utils Page`
 
 Each page can be switched using a tab view.
 
 # Scheduling Page
+
+`Scheduling Page` exists to make it possible for users to edit/create/delete all kind of tickets.
 
 `Scheduling Page` consists of two screens.
 
@@ -75,7 +77,7 @@ Each date is button which leads to `Daily view Screen`.
 
 ### visual image
 
-![calendar](calendar.png)
+![[calender-sample.png]]
 
 ## Daily view Screen
 
@@ -92,7 +94,7 @@ Tapping outside the `Tickets Container` returns the screen to the `Calendar View
 
 ### Visual Image
 
-![tickets](tickets.png)
+![[tickets-sample.png]]
 
 ## Ticket creation Window
 
@@ -113,9 +115,11 @@ The `Ticket configuration Section` varies based on the type of ticket selected. 
 
 There are shered part, `Chips`, too: `Save button`-'Check Mark' and `Delete button`-'Cross Mark' on the top-right.
 
-# Ticket Page
+# Main Page
 
-`Ticket Page` contains;
+`Main Page` is a initial page. It displays values as user decided in scheduling page. Users can make/check the latest `Receipt Data` in this Page.
+
+`Main Page` contains;
 
 - `Ticket Container`
 - `Log Button`
@@ -166,6 +170,8 @@ General flow is:
 
 # Data Page
 
+`Data Page` exists to allow users to access all data dealt with this app.
+
 `Data Page` contains:
 
 - `Table`
@@ -204,6 +210,7 @@ On the other hand, restore button calls window to load `.db` file and `.json` fi
 
 - `Category controller Section`
 - `Tentative display ticket Section`
+- `Tentative estimation ticket Section`
 - `Chart Section`
 
 In `Category controller Section`, categories can be
@@ -232,6 +239,7 @@ In the `Chart Section`, users can generate:
   - that shows ratio of absolute values of target categories.
 
 `Tentative display ticket Section` show the statistical information as `Display Ticket`s do.
+`Tentative estimation ticket Section` shows the value as `Estimation Ticket` do.
 
 Above all is folded at first, and user can expand them when they needs to do so.
 

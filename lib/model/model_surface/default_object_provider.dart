@@ -9,14 +9,14 @@ class DefaultCategoryProvider {
 
 abstract final class DefaultTicketProvider {
   static view_obj.DisplayTicket get displayTicket => view_obj.DisplayTicket(
-        displayPeriod: DTPeriod.week,
-        termMode: DTTermMode.untilToday,
-        contentType: DTContentType.summation,
+        displayPeriod: DisplayPeriod.week,
+        termMode: DisplayTermMode.untilToday,
+        contentType: DisplayContentType.summation,
         targetingAllCategories: true,
         targetCategories: [],
       );
   static view_obj.Estimation get estimation => view_obj.Estimation(
-        contentType: ETContentType.perDay,
+        contentType: EstimationContentType.perDay,
         targetingAllCategories: false,
         targetCategories: [],
       );
@@ -25,7 +25,7 @@ abstract final class DefaultTicketProvider {
         supplement: '',
         amount: 0,
         originDate: today(),
-        repeatType: SCRepeatType.no,
+        repeatType: ScheduleRepeatType.no,
         repeatInterval: const Duration(days: 0),
         weeklyRepeatOn: [],
       );

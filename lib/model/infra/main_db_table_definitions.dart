@@ -28,7 +28,7 @@ enum DisplayTicketFE<T> implements FieldEnum {
   lastInDays(NullableDaysField('lastInDays')),
   periodBegin(NullableDateField('periodBegin')),
   periodEnd(NullableDateField('periodEnd')),
-  contentType(EnumField('contentType', DTContentType.values));
+  contentType(EnumField('contentType', DisplayContentType.values));
 
   const DisplayTicketFE(this.val);
   @override
@@ -67,7 +67,7 @@ enum ScheduleFE<T> implements FieldEnum {
   category(ForeignIdField('category', 'Categories')),
   amount(IntField('amount')),
   originDate(DateField('originDate', isIndexed: true)),
-  repeatType(EnumField('repeatType', SCRepeatType.values)),
+  repeatType(EnumField('repeatType', ScheduleRepeatType.values)),
   repeatInterval(DaysField('repeatInterval')),
   repeatOnSunday(BoolField('repeatOnSunday')),
   repeatOnMonday(BoolField('repeatOnMonday')),
@@ -99,7 +99,7 @@ enum EstimationFE<T> implements FieldEnum {
   id(IdField()),
   periodBegin(NullableDateField('periodBegin')),
   periodEnd(NullableDateField('periodEnd')),
-  contentType(EnumField('contentType', ETContentType.values));
+  contentType(EnumField('contentType', EstimationContentType.values));
 
   const EstimationFE(this.val);
   @override

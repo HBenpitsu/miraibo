@@ -59,7 +59,7 @@ class _EstimationTicketConfiguraitonSectionState
     extends State<EstimationTicketConfigSection> with ConfigSectionState {
   late MultipleCategorySelectorController categoryCtl;
   late InfinitePeriodSelectorController periodCtl;
-  late ETContentType contentType;
+  late EstimationContentType contentType;
 
   @override
   void initSubModuleControllers() {
@@ -111,17 +111,21 @@ class _EstimationTicketConfiguraitonSectionState
   List<Widget> contentTypeSelector() {
     return sector(
         'Content Type',
-        DropdownMenu<ETContentType>(
+        DropdownMenu<EstimationContentType>(
           initialSelection: contentType,
           dropdownMenuEntries: const [
             DropdownMenuEntry(
-                value: ETContentType.perDay, label: 'estimation per day'),
+                value: EstimationContentType.perDay,
+                label: 'estimation per day'),
             DropdownMenuEntry(
-                value: ETContentType.perWeek, label: 'estimation per week'),
+                value: EstimationContentType.perWeek,
+                label: 'estimation per week'),
             DropdownMenuEntry(
-                value: ETContentType.perMonth, label: 'estimation per month'),
+                value: EstimationContentType.perMonth,
+                label: 'estimation per month'),
             DropdownMenuEntry(
-                value: ETContentType.perYear, label: 'estimation per year'),
+                value: EstimationContentType.perYear,
+                label: 'estimation per year'),
           ],
           onSelected: (value) {
             if (value != null) {

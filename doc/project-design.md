@@ -1,5 +1,6 @@
 
-(confirmed on 30th Nov 2024)
+> [!success] confirmed
+> Dec 8th 2024
 
 # project-design
 
@@ -10,14 +11,7 @@ This document explains that what design pattern this project follows, how direct
 This project follows the MVC design pattern. The project is divided into three layers: Model, View, and Controller.
 View and Controller layers are implemented in the `ui` directory. So, they are mentioned as UI-layer below.
 
-Model layer is devided into sublayers:
-
-- infrastructure
-- transaction
-- worker
-- surface
-
-Addtionaly, there is a `commander` layer that is used to invoke event of UI-layer from Model-layer.
+Additionally, there is a `commander` layer that is used to invoke event of UI-layer from Model-layer.
 Because Model-layer can not call method on UI-layer directly, a mediator is needed.
 
 > [!note]
@@ -29,15 +23,9 @@ Because Model-layer can not call method on UI-layer directly, a mediator is need
     View<-Entry point
      |
 Controller
-|    |
-|   Model (Surface)
-|    |    |
-|    ^    ^
-|    |    |
-| worker<-|- Entry point
-| |  |    |
-| | transaction
-| |       |
+|     |
+|     Model<- Entry point
+|     |   |
 commander |
           |
     infrastructure
@@ -50,7 +38,7 @@ Check out `conding-rules.md`.
 
 The responsibilities of `View` are:
 
-- define apearance of the UI
+- define appearance of the UI
 - define animation of the UI
 - show data provided by `Controller`s
 
@@ -60,30 +48,10 @@ The responsibilities of `Controller` are:
 - tell `Model` to edit data
 - listen to `Commander`
 
-The responsibilities of `Model Surface` are:
+The responsibilities of `Model` are:
 
-- call necessary implementations (in `Transaction`/`Worker`)
-
-The responsibilities of `Transaction` are:
-
-- Create/Read/Update/Delete data from database using `Infrastructure`
-- define batch process on the data
-- define calculation method
-
-`Transaction` may be classified into two types:
-
-- Basic transaction:
-  - including inserting single record, fetching the oldest record and so on
-- Applied transaction:
-  - including calculating mean of the field and so on
-
-The responsibilities of `Worker` are:
-
-- dispatch/handle non-UI based events
-  - periodic event
-  - asyncronous event
-- invoke some `Transaction`
-- tell commander that UI update is required
+- manage data
+- return proper data
 
 The responsibilities of `Commander`
 

@@ -98,14 +98,14 @@ class InsertScheduledPredictions extends SubTransactionProvider<void>
 
   Iterable<DateTime> timestamps() sync* {
     switch (schedule.repeatType) {
-      case SCRepeatType.no:
+      case ScheduleRepeatType.no:
         yield schedule.originDate;
         break;
-      case SCRepeatType.interval:
+      case ScheduleRepeatType.interval:
         yield* DateTimeSequence.withInterval(
             rangeBegin, rangeEnd, schedule.originDate, schedule.repeatInterval);
         break;
-      case SCRepeatType.weekly:
+      case ScheduleRepeatType.weekly:
         var weekdays = <Weekday>[];
         if (schedule.repeatOnSunday) weekdays.add(Weekday.sunday);
         if (schedule.repeatOnMonday) weekdays.add(Weekday.tuesday);
@@ -116,7 +116,7 @@ class InsertScheduledPredictions extends SubTransactionProvider<void>
         if (schedule.repeatOnSaturday) weekdays.add(Weekday.saturday);
         yield* DateTimeSequence.weekly(rangeBegin, rangeEnd, weekdays);
         break;
-      case SCRepeatType.monthly:
+      case ScheduleRepeatType.monthly:
         if (schedule.monthlyRepeatHeadOriginOffset != null) {
           yield* DateTimeSequence.monthlyHeadOrigin(
               rangeBegin, rangeEnd, schedule.monthlyRepeatHeadOriginOffset!);
@@ -127,7 +127,7 @@ class InsertScheduledPredictions extends SubTransactionProvider<void>
           assert(false); // unreachable
         }
         break;
-      case SCRepeatType.anually:
+      case ScheduleRepeatType.anually:
         yield* DateTimeSequence.anually(
             rangeBegin, rangeEnd, schedule.originDate);
         break;
