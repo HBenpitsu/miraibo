@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:miraibo/ui/component/general_widget.dart';
 
 import 'package:miraibo/type/view_obj.dart';
-import 'package:miraibo/model/model_surface/category_handler.dart';
+import 'package:miraibo/model_v2/model_v2.dart';
 
 /* 
 In this file, we define the category related components
@@ -67,7 +67,7 @@ class _SingleCategorySelectorState extends State<SingleCategorySelector> {
     super.initState();
     widget.controller._isInitialized = false;
     widget.controller._category = () => selected;
-    optionsFetched = CategoryHandler().all();
+    optionsFetched = Model.category.all().toList();
   }
 
   @override
@@ -173,7 +173,7 @@ class _MultipleCategorySelectorState extends State<MultipleCategorySelector> {
 
   late final Future<void> optionsInitialized;
   Future<void> initializeOptions() async {
-    options = await CategoryHandler().all();
+    options = await Model.category.all().toList();
     for (Category category in widget.controller.initiallySelectedCategories) {
       options.remove(category);
     }
@@ -297,7 +297,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
 
   Future<void> initializeMutableList() async {
     mutableListCtl = MutableListFormController<Category>(
-      items: await CategoryHandler().all(),
+      items: await Model.category.all().toList(),
       toLabel: (item) => item.name,
     );
   }
@@ -327,9 +327,13 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
         controller: textCtl,
         onSubmitted: (value) {
           if (value.isEmpty) return;
-          CategoryHandler().make(value).then(
-                (cat) => mutableListCtl.addItem(cat),
-              );
+          var cat = Category(name: value);
+          Model.category.save(cat).then(
+            (id) {
+              cat.id = id;
+              mutableListCtl.addItem(cat);
+            },
+          );
           textCtl.clear();
           // do not lose focus
           focusNode.requestFocus();
@@ -342,9 +346,13 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
           color: Theme.of(context).colorScheme.primary,
           onPressed: () {
             if (textCtl.text.isEmpty) return;
-            CategoryHandler().make(textCtl.text).then(
-                  (cat) => mutableListCtl.addItem(cat),
-                );
+            var cat = Category(name: textCtl.text);
+            Model.category.save(cat).then(
+              (id) {
+                cat.id = id;
+                mutableListCtl.addItem(cat);
+              },
+            );
             textCtl.clear();
           },
         ),
@@ -385,7 +393,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
                   child: const Text('Cancel')),
               TextButton(
                   onPressed: () {
-                    CategoryHandler().replace(replaced, replaceWith);
+                    Model.category.integrate(replaceWith.id!, replaced.id!);
                     mutableListCtl.removeItem(replaced);
                     // close category editor and confirmation dialog at once
                     Navigator.of(context).pop();
@@ -460,7 +468,7 @@ class _CategoryEditorSectionState extends State<CategoryEditorSection> {
                       mutableListCtl.invokeRebuild!();
                     }
                     item.name = textCtl.text;
-                    CategoryHandler().save(item);
+                    Model.category.save(item);
                   },
                   child: const Text('OK')),
             ],

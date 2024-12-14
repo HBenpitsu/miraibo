@@ -5,9 +5,8 @@ import 'package:miraibo/ui/component/category.dart';
 import 'package:miraibo/ui/component/configurator_component.dart';
 import 'package:miraibo/ui/component/general_widget.dart';
 import 'package:miraibo/ui/component/ticket_configurator_shared_traits.dart';
-import 'package:miraibo/model/model_surface/log_handler.dart';
 import 'package:miraibo/type/view_obj.dart';
-import 'package:miraibo/model/model_surface/default_object_provider.dart';
+import 'package:miraibo/model_v2/model_v2.dart';
 import 'package:miraibo/util/date_time.dart';
 
 /* <log ticket configurator>
@@ -26,16 +25,25 @@ For more details, such as the options for each field, see the component-structur
 class LogTicketConfigSectionController extends SectionController {
   Log record;
   LogTicketConfigSectionController({Log? record})
-      : record = record ?? DefaultTicketProvider.log;
+      : record = record ??
+            Log(
+                date: today(),
+                category: Category(name: 'select a category', id: 0),
+                amount: 0,
+                supplement: '',
+                confirmed: false);
 
   @override
   void save() {
-    LogHandler().save(record);
+    Model.log.save(record);
   }
 
   @override
   void delete() {
-    LogHandler().delete(record);
+    if (record.id == null) {
+      return;
+    }
+    Model.log.delete(record);
   }
 
   @override

@@ -7,8 +7,7 @@ import 'package:miraibo/ui/component/general_widget.dart';
 import 'package:miraibo/ui/component/ticket_configurator_shared_traits.dart';
 import 'package:miraibo/util/date_time.dart';
 import 'package:miraibo/type/view_obj.dart';
-import 'package:miraibo/model/model_surface/default_object_provider.dart';
-import 'package:miraibo/model/model_surface/schedule_handler.dart';
+import 'package:miraibo/model_v2/model_v2.dart';
 import 'package:miraibo/type/enumarations.dart';
 
 /*  <schedule ticket configurator>
@@ -31,16 +30,28 @@ For more details, such as the options for each field, see the component-structur
 class ScheduleTicketConfigSectionController extends SectionController {
   Schedule record;
   ScheduleTicketConfigSectionController({Schedule? record})
-      : record = record ?? DefaultTicketProvider.schedule;
+      : record = record ??
+            Schedule(
+              category: Category(name: 'select a category', id: 0),
+              supplement: '',
+              amount: 0,
+              originDate: today(),
+              repeatType: ScheduleRepeatType.no,
+              repeatInterval: const Duration(days: 0),
+              weeklyRepeatOn: [],
+            );
 
   @override
   void save() {
-    ScheduleHandler().save(record);
+    Model.schedule.save(record);
   }
 
   @override
   void delete() {
-    ScheduleHandler().delete(record);
+    if (record.id == null) {
+      return;
+    }
+    Model.schedule.delete(record.id!);
   }
 
   @override

@@ -13,24 +13,22 @@ class Category {
   });
 }
 
-class DisplayTicket {
+class Display {
   int? id;
   DisplayTermMode termMode;
   DisplayPeriod displayPeriod;
   DateTime? periodBegin;
   DateTime? periodEnd;
-  DateTime? designatedDate;
   DisplayContentType contentType;
   bool targetingAllCategories;
   List<Category> targetCategories;
 
-  DisplayTicket({
+  Display({
     this.id,
     required this.termMode,
     required this.displayPeriod,
     this.periodBegin,
     this.periodEnd,
-    this.designatedDate,
     required this.contentType,
     required this.targetingAllCategories,
     required this.targetCategories,
@@ -114,5 +112,21 @@ class Preset {
     required this.category,
     required this.amount,
     required this.supplement,
+  });
+}
+
+class ChartQuery {
+  DateTime periodBegin;
+  DateTime periodEnd;
+  ChartType chartType;
+  ChartAxesInterval axesInterval;
+  List<Category> categories;
+
+  ChartQuery({
+    required this.periodBegin,
+    required this.periodEnd,
+    required this.chartType,
+    required this.axesInterval,
+    required this.categories,
   });
 }

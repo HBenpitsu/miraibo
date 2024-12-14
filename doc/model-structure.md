@@ -18,15 +18,15 @@ Surface calls Worker, Worker invokes Operations, and Operations consults Data.
 `Surface`-layer consists of some components. And each component has their methods.
 methods are classified into 5 types based on the operations which they requires.
 
-| component  | SAVE-type | DELETE-type | FETCH-type                | SUMMARY-type             | CACHE-type |
-| :--------: | --------- | ----------- | ------------------------- | ------------------------ | ---------- |
-|    log     | save      | delete      | fetchAll<br>on<br>onToday |                          |            |
-|  display   | save      | delete      | on<br>edgeOn              | content                  |            |
-|  schedule  | save      | delete      | on<br>untilToday          |                          |            |
-| estimation | save      | delete      | on                        | content                  |            |
-|  category  | save      | integrate   | fetchAll                  |                          |            |
-|   chart    |           |             |                           | Accumulation<br>Subtotal |            |
-|   cache    |           | clean       |                           |                          | notify     |
+| component  | SAVE-type            | DELETE-type | FETCH-type                | SUMMARY-type             | CACHE-type |
+| :--------: | -------------------- | ----------- | ------------------------- | ------------------------ | ---------- |
+|    log     | save<br>confirmUntil | delete      | all<br>on <br>unconfirmed |                          |            |
+|  display   | save                 | delete      | on<br>edgeOn              | content                  |            |
+|  schedule  | save                 | delete      | on                        |                          |            |
+| estimation | save                 | delete      | on                        | content                  |            |
+|  category  | save                 | integrate   | all                       |                          |            |
+|   chart    |                      |             |                           | Accumulation<br>Subtotal |            |
+|   cache    |                      |             |                           |                          | notify     |
 
 Although the `type` roughly corresponds with the `operation kind` they will use, it is not radical. For example, only `notify` is classified into CACHE-type though, all of SAVE-type/DELETE-type methods also requires `CACHE operation`.
 

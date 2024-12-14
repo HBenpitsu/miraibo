@@ -4,7 +4,7 @@ import 'package:miraibo/ui/component/display_ticket_configurator.dart';
 import 'package:miraibo/ui/component/estimation_ticket_configurator.dart';
 import 'package:miraibo/ui/component/schedule_ticket_configurator.dart';
 import 'package:miraibo/ui/component/log_ticket_configurator.dart';
-import 'package:miraibo/model/model_surface/preset_handler.dart';
+import 'package:miraibo/model_v2/model_v2.dart';
 import 'package:miraibo/type/view_obj.dart' as obj;
 
 /* <applied configurators>
@@ -36,7 +36,7 @@ class _LogTicketConfigSectionWithPresetState
   @override
   void initState() {
     super.initState();
-    fPresets = PresetHandler().fetch(nPreset);
+    fPresets = Model.log.presets(nPreset).toList();
   }
 
   void applyPreset(obj.Preset data) {
@@ -174,8 +174,6 @@ class _TicketCreationSectionState extends State<TicketCreationSection>
     // <set initial date to each configurator>
     displayTicketConfigCtl.record.periodBegin = widget.sectionController.date;
     displayTicketConfigCtl.record.periodEnd = widget.sectionController.date;
-    displayTicketConfigCtl.record.designatedDate =
-        widget.sectionController.date;
     scheduleTicketConfigCtl.record.originDate = widget.sectionController.date;
     scheduleTicketConfigCtl.record.periodBegin = widget.sectionController.date;
     scheduleTicketConfigCtl.record.periodEnd = widget.sectionController.date;

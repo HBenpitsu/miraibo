@@ -13,12 +13,7 @@ import 'package:miraibo/ui/component/ticket_configurator_shared_traits.dart';
 import 'package:miraibo/ui/component/motion.dart';
 import 'package:miraibo/ui/component/ticket.dart';
 
-import 'package:miraibo/model/model_surface/date_button_handler.dart';
-import 'package:miraibo/model/model_surface/display_handler.dart';
-import 'package:miraibo/model/model_surface/estimation_handler.dart';
-import 'package:miraibo/model/model_surface/log_handler.dart';
-import 'package:miraibo/model/model_surface/schedule_handler.dart';
-import 'package:miraibo/model/model_surface/prediction_handler.dart';
+import 'package:miraibo/model_v2/model_v2.dart';
 
 import 'package:miraibo/type/view_obj.dart' as data;
 
@@ -69,9 +64,8 @@ It is invoked by scrolling the CalendarList/TicketContainerList.
 class PredictionController {
   final SchedulingPageController superController;
   PredictionController(this.superController);
-  final handler = PredictionHandler();
   void rendered(DateTime date) {
-    handler.onDateRendered(date);
+    Model.cache.notify(date);
   }
 }
 
@@ -426,7 +420,19 @@ class DateButtonController {
 
   DateButtonController(this.superCtl, {required this.date});
   Future<DateButtonStyle> style() async {
-    return await DateButtonHandler().fetchStyleFor(date);
+    if (!(await Model.display.edgeOn(date).isEmpty) | // displayTickets
+            !(await Model.schedule.on(date).isEmpty) // | // scheduleTickets
+        // !(await Model.estimation.edgeOn(date).isEmpty) | // estimationTickets
+        // !(await Model.log.edgeOn(date).isEmpty) | // logTickets
+        ) {
+      return DateButtonStyle.hasNotableEvent;
+    }
+    if (!(await Model.display.on(date).isEmpty) |
+        !(await Model.estimation.on(date).isEmpty) |
+        !(await Model.log.on(date).isEmpty)) {
+      return DateButtonStyle.hasTrivialEvent;
+    }
+    return DateButtonStyle.hasNothing;
   }
 
   void setFocusedDate() {
@@ -763,19 +769,19 @@ class TicketContainerController {
   TicketContainerController(this.superCtl, {required this.date});
 
   Future<List<data.Log>> logTickets() {
-    return LogHandler().belongsTo(date);
+    return Model.log.on(date).toList();
   }
 
-  Future<List<data.DisplayTicket>> displayTickets() {
-    return DisplayHandler().belongsTo(date);
+  Future<List<data.Display>> displayTickets() {
+    return Model.display.on(date).toList();
   }
 
   Future<List<data.Schedule>> scheduleTickets() {
-    return ScheduleHandler().belongsTo(date);
+    return Model.schedule.on(date).toList();
   }
 
   Future<List<data.Estimation>> estimationTickets() {
-    return EstimationHandler().belongsTo(date);
+    return Model.estimation.on(date).toList();
   }
 }
 

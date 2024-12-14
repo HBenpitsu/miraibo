@@ -8,8 +8,7 @@ import 'package:miraibo/ui/component/ticket_configurator_shared_traits.dart';
 import 'package:miraibo/type/enumarations.dart';
 import 'package:miraibo/util/date_time.dart';
 import 'package:miraibo/type/view_obj.dart';
-import 'package:miraibo/model/model_surface/default_object_provider.dart';
-import 'package:miraibo/model/model_surface/display_handler.dart';
+import 'package:miraibo/model_v2/model_v2.dart';
 
 /* <display ticket configurator>
 
@@ -24,18 +23,28 @@ The other fields are optional and depend on the term mode.
 For more details, such as the options for each field, see the component-structure.md or abstruction.md or implementation.
 */
 class DisplayTicketConfigSectionController extends SectionController {
-  DisplayTicket record;
-  DisplayTicketConfigSectionController({DisplayTicket? record})
-      : record = record ?? DefaultTicketProvider.displayTicket;
+  Display record;
+  DisplayTicketConfigSectionController({Display? record})
+      : record = record ??
+            Display(
+              displayPeriod: DisplayPeriod.week,
+              termMode: DisplayTermMode.untilToday,
+              contentType: DisplayContentType.summation,
+              targetingAllCategories: true,
+              targetCategories: [],
+            );
 
   @override
   void save() {
-    DisplayHandler().save(record);
+    Model.display.save(record);
   }
 
   @override
   void delete() {
-    DisplayHandler().delete(record);
+    if (record.id == null) {
+      return;
+    }
+    Model.display.delete(record.id!);
   }
 
   @override
@@ -103,13 +112,14 @@ class _DisplayTicketConfigSectionState extends State<DisplayTicketConfigSection>
           context, 'Category unselected. Please select at least one category.');
       return;
     }
-    widget.sectionController.record = DisplayTicket(
+    widget.sectionController.record = Display(
       targetCategories: categorySelectorCtl.selectedCategories,
       targetingAllCategories: categorySelectorCtl.allCategoriesSelected,
       termMode: termMode,
       periodBegin: periodPickerCtl.start,
-      periodEnd: periodPickerCtl.end,
-      designatedDate: datePickerCtl.selected,
+      periodEnd: termMode == DisplayTermMode.untilDate
+          ? datePickerCtl.selected
+          : periodPickerCtl.end,
       displayPeriod: period,
       contentType: contentType,
     );

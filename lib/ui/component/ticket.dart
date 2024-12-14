@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:miraibo/model/model_surface/display_handler.dart';
-import 'package:miraibo/model/model_surface/estimation_handler.dart';
+import 'package:miraibo/model_v2/model_v2.dart';
 import 'package:miraibo/type/view_obj.dart' as view_obj;
 import 'package:miraibo/type/enumarations.dart';
 
@@ -145,7 +144,7 @@ class ScheduleTicket extends StatelessWidget {
 
 class DisplayTicket extends StatelessWidget {
   final void Function() onPressed;
-  final view_obj.DisplayTicket data;
+  final view_obj.Display data;
   const DisplayTicket({super.key, required this.onPressed, required this.data});
 
   List<String> categoryLabel() {
@@ -158,7 +157,7 @@ class DisplayTicket extends StatelessWidget {
 
   Widget content() {
     return FutureBuilder(
-        future: DisplayHandler().calculate(data),
+        future: Model.display.content(data),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done &&
               snapshot.hasData) {
@@ -191,7 +190,7 @@ class DisplayTicket extends StatelessWidget {
           DisplayPeriod.year => 'for last year',
         },
       DisplayTermMode.untilDate =>
-        'until ${data.designatedDate?.year}-${data.designatedDate?.month}-${data.designatedDate?.day}',
+        'until ${data.periodEnd?.year}-${data.periodEnd?.month}-${data.periodEnd?.day}',
       DisplayTermMode.specificPeriod =>
         'from ${data.periodBegin?.year}-${data.periodBegin?.month}-${data.periodBegin?.day} '
             'until ${data.periodEnd?.year}-${data.periodEnd?.month}-${data.periodEnd?.day}',
@@ -226,7 +225,7 @@ class EstimationTicket extends StatelessWidget {
 
   Widget content() {
     return FutureBuilder(
-        future: EstimationHandler().calculate(data),
+        future: Model.estimation.content(data),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done &&
               snapshot.hasData) {

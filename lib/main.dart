@@ -5,7 +5,7 @@ import 'package:miraibo/ui/page/data_page.dart';
 import 'package:miraibo/ui/page/utils_page.dart';
 import 'package:miraibo/ui/component/motion.dart';
 import 'package:miraibo/ui/component/modal_controller.dart';
-import 'package:miraibo/model/transaction/initialize_database.dart';
+import 'package:miraibo/model_v2/model_v2.dart';
 
 /* 
 This is the entry point of the application. 
@@ -26,7 +26,7 @@ class RootController {
       SchedulingPageController();
   final ModalController modalController = ModalController();
   Future<void> initializeModel() async {
-    await InitMainDatabase().execute();
+    await regularEventDispacher.initApp();
   }
 }
 

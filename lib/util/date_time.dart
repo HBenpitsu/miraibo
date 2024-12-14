@@ -1,14 +1,26 @@
 import 'package:miraibo/type/enumarations.dart';
 
+/// Returns a new [DateTime] object with the same year, month, and day as [date].
+/// The time fields are set to 0.
+DateTime datize(DateTime date) {
+  return DateTime(date.year, date.month, date.day);
+}
+
 DateTime today() {
   var now = DateTime.now();
   return DateTime(now.year, now.month, now.day);
+}
+
+DateTime tomorrow() {
+  var now = DateTime.now();
+  return DateTime(now.year, now.month, now.day + 1);
 }
 
 DateTime farPast() {
   return DateTime(2000);
 }
 
+// abstract final == group of functions
 abstract final class DateTimeSequence {
   static Iterable<DateTime> daily(DateTime from, DateTime to) sync* {
     for (var current = from; // includes `from`
